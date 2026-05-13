@@ -66,6 +66,8 @@
         <button class="tab-button active" data-tab="suggestions">Who To Play</button>
         <button class="tab-button" data-tab="captains">Captain Picks</button>
         <button class="tab-button" data-tab="team">My XI</button>
+        <button class="tab-button" data-tab="custom">Create XI</button>
+        <button class="tab-button" data-tab="pool">Player Pool</button>
         <button class="tab-button" data-tab="outlook">Next Round</button>
         <button class="tab-button" data-tab="watchlist">Watchlist</button>
       </div>
@@ -88,6 +90,32 @@
           <div id="defenseLine" class="player-line"></div>
           <div id="keeperLine" class="player-line"></div>
         </div>
+      </div>
+
+      <!-- Custom starting 11 tab -->
+      <div id="custom" class="tab-panel">
+        <label class="formation-choice">
+          Formation
+          <select id="formationSelect">
+            <option value="4-3-3">4-3-3</option>
+            <option value="4-4-2">4-4-2</option>
+            <option value="3-5-2">3-5-2</option>
+            <option value="3-4-3">3-4-3</option>
+            <option value="5-3-2">5-3-2</option>
+          </select>
+        </label>
+        <div id="customBuilder" class="custom-builder"></div>
+        <h3 class="custom-title">Your Custom Starting 11</h3>
+        <div id="customTeamList" class="custom-team-list"></div>
+        <h3 class="custom-title bench-title">Bench</h3>
+        <div id="benchBuilder" class="custom-builder"></div>
+        <div id="benchList" class="custom-team-list"></div>
+      </div>
+
+      <!-- Full player database tab -->
+      <div id="pool" class="tab-panel">
+        <p id="playerPoolCount" class="pool-count"></p>
+        <div id="playerPoolList" class="pool-grid"></div>
       </div>
 
       <!-- Teams likely to advance tab -->

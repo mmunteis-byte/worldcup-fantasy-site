@@ -369,6 +369,127 @@ h1 {
   font-size: 11px;
 }
 
+/* Compact full player pool */
+.pool-count {
+  margin: 0 0 14px;
+  color: #f2f2f2;
+  font-weight: 900;
+}
+
+.pool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  max-height: 720px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.pool-card {
+  padding: 14px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-radius: 8px;
+}
+
+.pool-card h3 {
+  margin: 0 0 8px;
+  color: white;
+  font-size: 16px;
+}
+
+.pool-card p {
+  margin: 0 0 6px;
+  color: #c9c9d1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* Custom starting 11 builder */
+.formation-choice {
+  display: grid;
+  gap: 7px;
+  max-width: 260px;
+  margin-bottom: 18px;
+  color: #c9c9d1;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.formation-choice select {
+  min-height: 42px;
+  padding: 10px 12px;
+  color: white;
+  background: #1b1b22;
+  border: 1px solid #4a4a54;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.custom-builder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.custom-builder label {
+  display: grid;
+  gap: 7px;
+  color: #c9c9d1;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.custom-builder select {
+  min-height: 42px;
+  padding: 10px 12px;
+  color: white;
+  background: #1b1b22;
+  border: 1px solid #4a4a54;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.custom-title {
+  margin: 0 0 14px;
+  color: white;
+  font-size: 22px;
+}
+
+.bench-title {
+  margin-top: 26px;
+}
+
+.custom-team-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.custom-player-card {
+  padding: 14px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.custom-player-card h4 {
+  margin: 0 0 8px;
+  color: white;
+  font-size: 16px;
+}
+
+.custom-player-card p {
+  margin: 0 0 6px;
+  color: #c9c9d1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 /* Hide the helper before the button is clicked */
 .hidden {
   display: none;

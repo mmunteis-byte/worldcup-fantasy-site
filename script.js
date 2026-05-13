@@ -5,6 +5,7 @@ const tabPanels = document.querySelectorAll(".tab-panel");
 const teamStyleInput = document.querySelector("#teamStyle");
 const riskStyleInput = document.querySelector("#riskStyle");
 const favoriteCountryInput = document.querySelector("#favoriteCountry");
+const formationSelect = document.querySelector("#formationSelect");
 
 let allPlayers = [];
 
@@ -229,6 +230,157 @@ function showWatchlist(players) {
   showCards(watchlist, "watchlistList");
 }
 
+// Show the full player database in a compact list
+function showPlayerPool(players) {
+  const count = document.querySelector("#playerPoolCount");
+  const container = document.querySelector("#playerPoolList");
+
+  count.textContent = `Showing ${players.length} sourced players from players.json`;
+  container.innerHTML = "";
+
+  players.forEach((player) => {
+    const card = document.createElement("article");
+    card.className = "pool-card";
+
+    card.innerHTML = `
+      <h3>${player.name}</h3>
+      <p>${player.club} | ${player.position}</p>
+      <p>Price: ${player.price} | Attack: ${player.attack_score} | Defense: ${player.defense_score} | Risk: ${player.risk_score}</p>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// Create dropdowns so the user can choose their own starting 11
+function showCustomBuilder(players) {
+  const builder = document.querySelector("#customBuilder");
+  builder.innerHTML = "";
+
+  const positions = getFormationPositions();
+
+  positions.forEach((group) => {
+    for (let i = 1; i <= group.count; i++) {
+      const label = document.createElement("label");
+      const select = document.createElement("select");
+      const matchingPlayers = players.filter((player) => player.position === group.position);
+
+      select.className = "custom-select";
+      select.innerHTML = `<option value="">Choose ${group.label} ${i}</option>`;
+
+      matchingPlayers.forEach((player) => {
+        const option = document.createElement("option");
+        option.value = player.id;
+        option.textContent = `${player.name} - ${player.club}`;
+        select.appendChild(option);
+      });
+
+      label.textContent = `${group.label} ${i}`;
+      label.appendChild(select);
+      builder.appendChild(label);
+    }
+  });
+
+  document.querySelectorAll(".custom-select").forEach((select) => {
+    select.addEventListener("change", () => showCustomTeam(players));
+  });
+
+  showCustomTeam(players);
+  showBenchBuilder(players);
+}
+
+// Decide how many players each formation needs
+function getFormationPositions() {
+  const formation = formationSelect.value;
+  const parts = formation.split("-").map((part) => Number(part));
+
+  return [
+    { label: "Goalkeeper", position: "Goalkeeper", count: 1 },
+    { label: "Defender", position: "Defender", count: parts[0] },
+    { label: "Midfielder", position: "Midfielder", count: parts[1] },
+    { label: "Forward", position: "Forward", count: parts[2] }
+  ];
+}
+
+// Show the custom players the user selected
+function showCustomTeam(players) {
+  const container = document.querySelector("#customTeamList");
+  const selectedIds = Array.from(document.querySelectorAll(".custom-select"))
+    .map((select) => select.value)
+    .filter((id) => id);
+
+  container.innerHTML = "";
+
+  selectedIds.forEach((id) => {
+    const player = players.find((item) => item.id === id);
+    const card = document.createElement("article");
+    card.className = "custom-player-card";
+
+    card.innerHTML = `
+      <h4>${player.name}</h4>
+      <p>${player.club} | ${player.position} | Price: ${player.price}</p>
+      <p>Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}</p>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// Create 5 bench slots from the full player database
+function showBenchBuilder(players) {
+  const builder = document.querySelector("#benchBuilder");
+  builder.innerHTML = "";
+
+  for (let i = 1; i <= 5; i++) {
+    const label = document.createElement("label");
+    const select = document.createElement("select");
+
+    select.className = "bench-select";
+    select.innerHTML = `<option value="">Choose Bench ${i}</option>`;
+
+    players.forEach((player) => {
+      const option = document.createElement("option");
+      option.value = player.id;
+      option.textContent = `${player.name} - ${player.club} (${player.position})`;
+      select.appendChild(option);
+    });
+
+    label.textContent = `Bench ${i}`;
+    label.appendChild(select);
+    builder.appendChild(label);
+  }
+
+  document.querySelectorAll(".bench-select").forEach((select) => {
+    select.addEventListener("change", () => showBench(players));
+  });
+
+  showBench(players);
+}
+
+// Show the bench players the user selected
+function showBench(players) {
+  const container = document.querySelector("#benchList");
+  const selectedIds = Array.from(document.querySelectorAll(".bench-select"))
+    .map((select) => select.value)
+    .filter((id) => id);
+
+  container.innerHTML = "";
+
+  selectedIds.forEach((id) => {
+    const player = players.find((item) => item.id === id);
+    const card = document.createElement("article");
+    card.className = "custom-player-card";
+
+    card.innerHTML = `
+      <h4>${player.name}</h4>
+      <p>${player.club} | ${player.position} | Price: ${player.price}</p>
+      <p>Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}</p>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
 // Show a helpful message if players.json cannot load
 function showLoadError() {
   showCards([
@@ -263,6 +415,8 @@ buildTeamButton.addEventListener("click", async () => {
     showSuggestions(allPlayers);
     showCaptains(allPlayers);
     showTeam(allPlayers);
+    showCustomBuilder(allPlayers);
+    showPlayerPool(allPlayers);
     showOutlook(allPlayers);
     showWatchlist(allPlayers);
 
@@ -281,6 +435,14 @@ buildTeamButton.addEventListener("click", async () => {
     showSuggestions(allPlayers);
     showCaptains(allPlayers);
     showTeam(allPlayers);
+    showPlayerPool(allPlayers);
     showWatchlist(allPlayers);
   });
+});
+
+// Rebuild the custom XI dropdowns when the formation changes
+formationSelect.addEventListener("change", () => {
+  if (allPlayers.length === 0) return;
+
+  showCustomBuilder(allPlayers);
 });
