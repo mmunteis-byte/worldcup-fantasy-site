@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Cup Fantasy Team Helper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Simple app header -->
+  <header class="top-bar">
+    <div class="logo-mark">WC</div>
+    <p>Fantasy XI</p>
+  </header>
+
+  <!-- Main page content -->
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">World Cup Fantasy</p>
+      <h1>Build a smarter fantasy squad</h1>
+      <p class="intro">Get quick player suggestions, captain ideas, a starting XI view, and team outlooks in one simple helper.</p>
+
+      <!-- This button reveals the fantasy helper tabs -->
+      <button id="buildTeamButton" class="primary-button">Build My Team</button>
+    </section>
+
+    <!-- The helper appears after the button is clicked -->
+    <section id="helperSection" class="helper-section hidden">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Squad Hub</p>
+          <h2>Your Fantasy Helper</h2>
+        </div>
+      </div>
+
+      <!-- Tab buttons switch between each helper view -->
+      <div class="tabs">
+        <button class="tab-button active" data-tab="suggestions">Who To Play</button>
+        <button class="tab-button" data-tab="captains">Captain Picks</button>
+        <button class="tab-button" data-tab="team">My XI</button>
+        <button class="tab-button" data-tab="outlook">Next Round</button>
+        <button class="tab-button" data-tab="watchlist">Watchlist</button>
+      </div>
+
+      <!-- Player suggestions tab -->
+      <div id="suggestions" class="tab-panel active">
+        <div id="suggestionList" class="card-grid"></div>
+      </div>
+
+      <!-- Captain picks tab -->
+      <div id="captains" class="tab-panel">
+        <div id="captainList" class="card-grid"></div>
+      </div>
+
+      <!-- Team formation tab -->
+      <div id="team" class="tab-panel">
+        <div class="pitch">
+          <div id="forwardLine" class="player-line"></div>
+          <div id="midfieldLine" class="player-line"></div>
+          <div id="defenseLine" class="player-line"></div>
+          <div id="keeperLine" class="player-line"></div>
+        </div>
+      </div>
+
+      <!-- Teams likely to advance tab -->
+      <div id="outlook" class="tab-panel">
+        <div id="outlookList" class="card-grid"></div>
+      </div>
+
+      <!-- Extra idea: transfer watchlist tab -->
+      <div id="watchlist" class="tab-panel">
+        <div id="watchlistList" class="card-grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
