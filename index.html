@@ -104,7 +104,7 @@
             <option value="5-3-2">5-3-2</option>
           </select>
         </label>
-        <div id="customBuilder" class="custom-builder"></div>
+        <p class="custom-help">Click a player icon on the pitch, then choose a player from the list.</p>
         <h3 class="custom-title">Your Custom Starting 11</h3>
         <div class="pitch custom-pitch">
           <div id="customForwardLine" class="player-line"></div>
@@ -113,8 +113,18 @@
           <div id="customKeeperLine" class="player-line"></div>
         </div>
         <h3 class="custom-title bench-title">Bench</h3>
-        <div id="benchBuilder" class="custom-builder"></div>
         <div id="benchList" class="bench-line"></div>
+        <div id="customSelectionPanel" class="selection-panel hidden">
+          <div class="selection-heading">
+            <div>
+              <p class="eyebrow">Choose Player</p>
+              <h3 id="selectionTitle">Select a player</h3>
+            </div>
+            <button id="closeSelectionButton" class="small-button">Close</button>
+          </div>
+          <input id="customPlayerSearch" type="search" placeholder="Search players for this slot">
+          <div id="customPlayerOptions" class="pool-grid selection-grid"></div>
+        </div>
       </div>
 
       <!-- Full player database tab -->

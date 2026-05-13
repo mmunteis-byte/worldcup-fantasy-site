@@ -8,8 +8,13 @@ const favoriteCountryInput = document.querySelector("#favoriteCountry");
 const formationSelect = document.querySelector("#formationSelect");
 const playerSearchInput = document.querySelector("#playerSearch");
 const playerSortInput = document.querySelector("#playerSort");
+const customSelectionPanel = document.querySelector("#customSelectionPanel");
+const customPlayerSearchInput = document.querySelector("#customPlayerSearch");
+const closeSelectionButton = document.querySelector("#closeSelectionButton");
 
 let allPlayers = [];
+let customSlots = [];
+let activeSlotId = null;
 
 // Load the real player database from players.json
 async function loadPlayerData() {
@@ -275,41 +280,35 @@ function sortPlayers(a, b, sortBy) {
   return playerScore(b, getUserChoices()) - playerScore(a, getUserChoices());
 }
 
-// Create dropdowns so the user can choose their own starting 11
+// Create clickable player slots for the custom team builder
 function showCustomBuilder(players) {
-  const builder = document.querySelector("#customBuilder");
-  builder.innerHTML = "";
+  customSlots = [];
 
-  const positions = getFormationPositions();
-
-  positions.forEach((group) => {
+  getFormationPositions().forEach((group) => {
     for (let i = 1; i <= group.count; i++) {
-      const label = document.createElement("label");
-      const select = document.createElement("select");
-      const matchingPlayers = players.filter((player) => player.position === group.position);
-
-      select.className = "custom-select";
-      select.innerHTML = `<option value="">Choose ${group.label} ${i}</option>`;
-
-      matchingPlayers.forEach((player) => {
-        const option = document.createElement("option");
-        option.value = player.id;
-        option.textContent = `${player.name} - ${player.club}`;
-        select.appendChild(option);
+      customSlots.push({
+        id: `${group.position}-${i}`,
+        label: `${group.label} ${i}`,
+        position: group.position,
+        playerId: null,
+        isBench: false
       });
-
-      label.textContent = `${group.label} ${i}`;
-      label.appendChild(select);
-      builder.appendChild(label);
     }
   });
 
-  document.querySelectorAll(".custom-select").forEach((select) => {
-    select.addEventListener("change", () => showCustomTeam(players));
-  });
+  for (let i = 1; i <= 5; i++) {
+    customSlots.push({
+      id: `Bench-${i}`,
+      label: `Bench ${i}`,
+      position: "Any",
+      playerId: null,
+      isBench: true
+    });
+  }
 
-  showCustomTeam(players);
-  showBenchBuilder(players);
+  activeSlotId = null;
+  customSelectionPanel.classList.add("hidden");
+  renderCustomSlots(players);
 }
 
 // Decide how many players each formation needs
@@ -325,20 +324,20 @@ function getFormationPositions() {
   ];
 }
 
-// Show the custom players the user selected
-function showCustomTeam(players) {
+// Draw every custom pitch and bench slot
+function renderCustomSlots(players) {
   document.querySelectorAll(".custom-pitch .player-line").forEach((line) => {
     line.innerHTML = "";
   });
 
-  const selectedIds = Array.from(document.querySelectorAll(".custom-select"))
-    .map((select) => select.value)
-    .filter((id) => id);
+  document.querySelector("#benchList").innerHTML = "";
 
-  selectedIds.forEach((id, index) => {
-    const player = players.find((item) => item.id === id);
-    const line = document.querySelector(`#${getCustomLineId(player.position)}`);
-    const token = createPitchToken(player, index + 1);
+  customSlots.forEach((slot, index) => {
+    const player = players.find((item) => item.id === slot.playerId);
+    const token = createSlotToken(slot, player, index + 1);
+    const line = slot.isBench
+      ? document.querySelector("#benchList")
+      : document.querySelector(`#${getCustomLineId(slot.position)}`);
 
     line.appendChild(token);
   });
@@ -352,74 +351,90 @@ function getCustomLineId(position) {
   return "customForwardLine";
 }
 
-// Create one pitch-style player card
-function createPitchToken(player, number) {
+// Create one clickable pitch slot
+function createSlotToken(slot, player, number) {
   const token = document.createElement("div");
-  token.className = "player-token";
+  token.className = "player-token slot-token";
+  token.dataset.slotId = slot.id;
 
-  token.innerHTML = `
-    <div class="shirt">${number}</div>
-    <p class="token-name">${player.name}</p>
-    <p class="token-position">${player.position}</p>
-    <div class="player-details">
-      <p><strong>Country:</strong> ${player.country}</p>
-      <p><strong>Club:</strong> ${player.club}</p>
-      <p><strong>Price:</strong> ${player.price}</p>
-      <p><strong>Attack:</strong> ${player.attack_score}</p>
-      <p><strong>Defense:</strong> ${player.defense_score}</p>
-      <p><strong>Risk:</strong> ${player.risk_score}</p>
-    </div>
-  `;
+  if (player) {
+    token.innerHTML = `
+      <div class="shirt">${number}</div>
+      <p class="token-name">${player.name}</p>
+      <p class="token-position">${player.position}</p>
+      <div class="player-details">
+        <p><strong>Country:</strong> ${player.country}</p>
+        <p><strong>Club:</strong> ${player.club}</p>
+        <p><strong>Price:</strong> ${player.price}</p>
+        <p><strong>Attack:</strong> ${player.attack_score}</p>
+        <p><strong>Defense:</strong> ${player.defense_score}</p>
+        <p><strong>Risk:</strong> ${player.risk_score}</p>
+      </div>
+    `;
+  } else {
+    token.innerHTML = `
+      <div class="shirt empty-shirt">+</div>
+      <p class="token-name">${slot.label}</p>
+      <p class="token-position">${slot.position}</p>
+      <div class="player-details">
+        <p>Click to choose a ${slot.position === "Any" ? "bench player" : slot.position.toLowerCase()}.</p>
+      </div>
+    `;
+  }
+
+  token.addEventListener("click", () => openPlayerSelection(slot.id));
 
   return token;
 }
 
-// Create 5 bench slots from the full player database
-function showBenchBuilder(players) {
-  const builder = document.querySelector("#benchBuilder");
-  builder.innerHTML = "";
-
-  for (let i = 1; i <= 5; i++) {
-    const label = document.createElement("label");
-    const select = document.createElement("select");
-
-    select.className = "bench-select";
-    select.innerHTML = `<option value="">Choose Bench ${i}</option>`;
-
-    players.forEach((player) => {
-      const option = document.createElement("option");
-      option.value = player.id;
-      option.textContent = `${player.name} - ${player.club} (${player.position})`;
-      select.appendChild(option);
-    });
-
-    label.textContent = `Bench ${i}`;
-    label.appendChild(select);
-    builder.appendChild(label);
-  }
-
-  document.querySelectorAll(".bench-select").forEach((select) => {
-    select.addEventListener("change", () => showBench(players));
-  });
-
-  showBench(players);
+// Open the player list for a clicked slot
+function openPlayerSelection(slotId) {
+  activeSlotId = slotId;
+  customPlayerSearchInput.value = "";
+  customSelectionPanel.classList.remove("hidden");
+  renderPlayerSelection(allPlayers);
 }
 
-// Show the bench players the user selected
-function showBench(players) {
-  const container = document.querySelector("#benchList");
-  const selectedIds = Array.from(document.querySelectorAll(".bench-select"))
-    .map((select) => select.value)
-    .filter((id) => id);
+// Show eligible players for the active slot
+function renderPlayerSelection(players) {
+  const slot = customSlots.find((item) => item.id === activeSlotId);
+  const title = document.querySelector("#selectionTitle");
+  const container = document.querySelector("#customPlayerOptions");
+  const searchText = customPlayerSearchInput.value.trim().toLowerCase();
+  const selectedIds = customSlots
+    .filter((item) => item.id !== activeSlotId && item.playerId)
+    .map((item) => item.playerId);
 
+  title.textContent = `Choose ${slot.label}`;
   container.innerHTML = "";
 
-  selectedIds.forEach((id) => {
-    const player = players.find((item) => item.id === id);
-    const card = createPitchToken(player, index + 1);
+  players
+    .filter((player) => slot.position === "Any" || player.position === slot.position)
+    .filter((player) => !selectedIds.includes(player.id))
+    .filter((player) => {
+      const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
+      return text.includes(searchText);
+    })
+    .sort((a, b) => playerScore(b, getUserChoices()) - playerScore(a, getUserChoices()))
+    .forEach((player) => {
+      const card = document.createElement("button");
+      card.className = "pool-card selection-card";
+      card.type = "button";
 
-    container.appendChild(card);
-  });
+      card.innerHTML = `
+        <h3>${player.name}</h3>
+        <p>${player.club} | ${player.position}</p>
+        <p>Price: ${player.price} | Attack: ${player.attack_score} | Defense: ${player.defense_score} | Risk: ${player.risk_score}</p>
+      `;
+
+      card.addEventListener("click", () => {
+        slot.playerId = player.id;
+        renderCustomSlots(allPlayers);
+        customSelectionPanel.classList.add("hidden");
+      });
+
+      container.appendChild(card);
+    });
 }
 
 // Show a helpful message if players.json cannot load
@@ -495,4 +510,17 @@ formationSelect.addEventListener("change", () => {
 
     showPlayerPool(allPlayers);
   });
+});
+
+// Search inside the custom player picker
+customPlayerSearchInput.addEventListener("input", () => {
+  if (allPlayers.length === 0 || !activeSlotId) return;
+
+  renderPlayerSelection(allPlayers);
+});
+
+// Close the custom player picker
+closeSelectionButton.addEventListener("click", () => {
+  customSelectionPanel.classList.add("hidden");
+  activeSlotId = null;
 });

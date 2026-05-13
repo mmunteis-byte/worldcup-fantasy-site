@@ -491,6 +491,28 @@ h1 {
   margin-bottom: 22px;
 }
 
+.custom-help {
+  margin: 0 0 18px;
+  color: #c9c9d1;
+  font-size: 15px;
+}
+
+.slot-token {
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.slot-token:hover {
+  border-color: white;
+  transform: translateY(-2px);
+}
+
+.empty-shirt {
+  border-style: dashed;
+  color: white;
+  background: #e30613;
+}
+
 .bench-title {
   margin-top: 26px;
 }
@@ -505,6 +527,69 @@ h1 {
 
 .bench-line .player-token {
   flex: 0 0 190px;
+}
+
+.selection-panel {
+  margin-top: 24px;
+  padding: 18px;
+  background: #111116;
+  border: 1px solid #303038;
+  border-radius: 8px;
+}
+
+.selection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.selection-heading h3 {
+  margin: 0;
+  color: white;
+  font-size: 22px;
+}
+
+.small-button {
+  border: 1px solid #4a4a54;
+  border-radius: 999px;
+  padding: 9px 14px;
+  color: white;
+  background: #1b1b22;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.small-button:hover {
+  color: #e30613;
+  background: white;
+}
+
+#customPlayerSearch {
+  width: 100%;
+  min-height: 42px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  color: white;
+  background: #1b1b22;
+  border: 1px solid #4a4a54;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.selection-grid {
+  max-height: 440px;
+}
+
+.selection-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.selection-card:hover {
+  border-color: white;
 }
 
 .custom-team-list {
