@@ -139,6 +139,56 @@ h1 {
   font-size: 30px;
 }
 
+/* User choices for team building */
+.choice-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-radius: 8px;
+}
+
+.choice-panel label {
+  display: grid;
+  gap: 7px;
+  color: #c9c9d1;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.choice-panel select,
+.choice-panel input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  color: white;
+  background: #111116;
+  border: 1px solid #4a4a54;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.choice-panel select:focus,
+.choice-panel input:focus {
+  outline: 2px solid #e30613;
+  border-color: #e30613;
+}
+
+.site-note {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  color: #f2f2f2;
+  background: #241116;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
 /* Tab navigation */
 .tabs {
   display: flex;
@@ -228,7 +278,7 @@ h1 {
 .pitch {
   display: grid;
   gap: 18px;
-  min-height: 620px;
+  min-height: 760px;
   padding: 28px 18px;
   background:
     linear-gradient(rgba(145, 0, 12, 0.52), rgba(12, 12, 16, 0.72)),
@@ -245,14 +295,18 @@ h1 {
 
 .player-line {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   gap: 18px;
   flex-wrap: wrap;
 }
 
 .player-token {
-  width: 128px;
+  width: 190px;
+  padding: 14px;
+  background: rgba(17, 17, 22, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
   text-align: center;
 }
 
@@ -286,6 +340,35 @@ h1 {
   text-transform: uppercase;
 }
 
+.player-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: left;
+}
+
+.player-details p {
+  margin: 0 0 6px;
+  color: #eeeeee;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.player-details strong {
+  color: white;
+}
+
+.player-details .reason {
+  margin-top: 10px;
+  color: white;
+  font-weight: 800;
+}
+
+.player-details .data-note {
+  color: #f5c6cb;
+  font-size: 11px;
+}
+
 /* Hide the helper before the button is clicked */
 .hidden {
   display: none;
@@ -310,10 +393,10 @@ h1 {
   }
 
   .pitch {
-    min-height: 720px;
+    min-height: 900px;
   }
 
   .player-token {
-    width: 112px;
+    width: min(100%, 260px);
   }
 }

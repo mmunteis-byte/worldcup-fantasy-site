@@ -2,6 +2,9 @@ const buildTeamButton = document.querySelector("#buildTeamButton");
 const helperSection = document.querySelector("#helperSection");
 const tabButtons = document.querySelectorAll(".tab-button");
 const tabPanels = document.querySelectorAll(".tab-panel");
+const teamStyleInput = document.querySelector("#teamStyle");
+const riskStyleInput = document.querySelector("#riskStyle");
+const favoriteCountryInput = document.querySelector("#favoriteCountry");
 
 let allPlayers = [];
 
@@ -18,30 +21,63 @@ async function loadPlayerData() {
 
 // Pick a simple 4-3-3 team from the player database
 function buildStartingTeam(players) {
+  const choices = getUserChoices();
   const goalkeepers = players.filter((player) => player.position === "Goalkeeper");
   const defenders = players.filter((player) => player.position === "Defender");
   const midfielders = players.filter((player) => player.position === "Midfielder");
   const forwards = players.filter((player) => player.position === "Forward");
 
   return [
-    ...pickBestPlayers(goalkeepers, 1),
-    ...pickBestPlayers(defenders, 4),
-    ...pickBestPlayers(midfielders, 3),
-    ...pickBestPlayers(forwards, 3)
+    ...pickBestPlayers(goalkeepers, 1, choices),
+    ...pickBestPlayers(defenders, 4, choices),
+    ...pickBestPlayers(midfielders, 3, choices),
+    ...pickBestPlayers(forwards, 3, choices)
   ];
 }
 
+// Read the choices from the form controls
+function getUserChoices() {
+  return {
+    teamStyle: teamStyleInput.value,
+    riskStyle: riskStyleInput.value,
+    favoriteCountry: favoriteCountryInput.value.trim().toLowerCase()
+  };
+}
+
 // Sort players using the prototype scores from players.json
-function pickBestPlayers(players, amount) {
+function pickBestPlayers(players, amount, choices = getUserChoices()) {
   return players
     .slice()
-    .sort((a, b) => playerScore(b) - playerScore(a))
+    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices))
     .slice(0, amount);
 }
 
-// Higher attack/defense is good, higher risk is bad
-function playerScore(player) {
-  return player.attack_score + player.defense_score - player.risk_score;
+// Score a player based on the user's choices
+function playerScore(player, choices) {
+  let score = 0;
+
+  if (choices.teamStyle === "attacking") {
+    score += player.attack_score * 2;
+    score += player.defense_score;
+  } else if (choices.teamStyle === "defensive") {
+    score += player.defense_score * 2;
+    score += player.attack_score;
+  } else {
+    score += player.attack_score;
+    score += player.defense_score;
+  }
+
+  if (choices.riskStyle === "safe") {
+    score -= player.risk_score * 1.5;
+  } else {
+    score -= player.risk_score * 0.5;
+  }
+
+  if (choices.favoriteCountry && String(player.country).toLowerCase() === choices.favoriteCountry) {
+    score += 12;
+  }
+
+  return score;
 }
 
 // Create simple recommendation cards
@@ -66,11 +102,12 @@ function showCards(list, elementId) {
 
 // Build the "Who To Play" tab from players.json
 function showSuggestions(players) {
-  const suggestions = pickBestPlayers(players, 6).map((player) => ({
+  const choices = getUserChoices();
+  const suggestions = pickBestPlayers(players, 6, choices).map((player) => ({
     label: "Start",
     title: player.name,
     text: `${player.club} ${player.position}. ${player.short_reason}`,
-    rating: `Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}`
+    rating: `Choice score: ${Math.round(playerScore(player, choices))}`
   }));
 
   showCards(suggestions, "suggestionList");
@@ -78,16 +115,25 @@ function showSuggestions(players) {
 
 // Build the captain tab from the best attacking players
 function showCaptains(players) {
+  const choices = getUserChoices();
   const captainPicks = players
     .slice()
-    .sort((a, b) => b.attack_score - a.attack_score)
+    .sort((a, b) => {
+      const bScore = b.attack_score * 2 - b.risk_score;
+      const aScore = a.attack_score * 2 - a.risk_score;
+      return bScore - aScore;
+    })
     .slice(0, 3)
     .map((player, index) => ({
       label: index === 0 ? "Best Pick" : "Captain Option",
       title: player.name,
-      text: `${player.club} ${player.position}. Strong prototype attack score from the player database.`,
-      rating: `Attack score: ${player.attack_score}`
+      text: `${player.club} ${player.position}. Strong attacking option from the player database.`,
+      rating: `Attack ${player.attack_score} | Risk ${player.risk_score}`
     }));
+
+  if (choices.riskStyle === "risky") {
+    captainPicks[0].label = "High Upside";
+  }
 
   showCards(captainPicks, "captainList");
 }
@@ -109,6 +155,16 @@ function showTeam(players) {
       <div class="shirt">${index + 1}</div>
       <p class="token-name">${player.name}</p>
       <p class="token-position">${player.position}</p>
+      <div class="player-details">
+        <p><strong>Country:</strong> ${player.country}</p>
+        <p><strong>Club:</strong> ${player.club}</p>
+        <p><strong>Price:</strong> ${player.price}</p>
+        <p><strong>Attack:</strong> ${player.attack_score}</p>
+        <p><strong>Defense:</strong> ${player.defense_score}</p>
+        <p><strong>Risk:</strong> ${player.risk_score}</p>
+        <p class="reason">${player.short_reason}</p>
+        <p class="data-note">${player.data_note}</p>
+      </div>
     `;
 
     line.appendChild(token);
@@ -158,9 +214,10 @@ function showOutlook(players) {
 
 // Build the watchlist from cheaper players with useful prototype scores
 function showWatchlist(players) {
+  const choices = getUserChoices();
   const watchlist = players
     .filter((player) => player.price <= 7.5)
-    .sort((a, b) => playerScore(b) - playerScore(a))
+    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices))
     .slice(0, 6)
     .map((player) => ({
       label: "Watchlist",
@@ -214,4 +271,16 @@ buildTeamButton.addEventListener("click", async () => {
     showLoadError();
     buildTeamButton.textContent = "Try Again";
   }
+});
+
+// Rebuild the visible results when the user changes their choices
+[teamStyleInput, riskStyleInput, favoriteCountryInput].forEach((input) => {
+  input.addEventListener("change", () => {
+    if (allPlayers.length === 0) return;
+
+    showSuggestions(allPlayers);
+    showCaptains(allPlayers);
+    showTeam(allPlayers);
+    showWatchlist(allPlayers);
+  });
 });

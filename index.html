@@ -33,6 +33,34 @@
         </div>
       </div>
 
+      <!-- User choices for how the team should be built -->
+      <div class="choice-panel">
+        <label>
+          Team style
+          <select id="teamStyle">
+            <option value="balanced">Balanced</option>
+            <option value="attacking">Attacking</option>
+            <option value="defensive">Defensive</option>
+          </select>
+        </label>
+
+        <label>
+          Risk style
+          <select id="riskStyle">
+            <option value="safe">Safe</option>
+            <option value="risky">Risky</option>
+          </select>
+        </label>
+
+        <label>
+          Favorite country
+          <input id="favoriteCountry" type="text" placeholder="Optional">
+        </label>
+      </div>
+
+      <!-- Data note for the prototype -->
+      <p class="site-note">This website uses real player names. Some fantasy scores and prices are prototype estimates. Official World Cup fantasy data will be added later if available.</p>
+
       <!-- Tab buttons switch between each helper view -->
       <div class="tabs">
         <button class="tab-button active" data-tab="suggestions">Who To Play</button>
