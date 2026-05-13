@@ -58,18 +58,283 @@ body {
     );
 }
 
-.hero,
+.hero-carousel,
 .helper-section {
   width: min(980px, 100%);
   border-radius: 8px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
 }
 
-.hero {
-  padding: 44px 30px;
-  background: #f7f7f7;
+.hero-carousel {
+  position: relative;
+  overflow: hidden;
+  min-height: 360px;
+  background: #111116;
+  border: 1px solid #303038;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+  align-items: center;
+  padding: 42px 30px;
+  opacity: 0;
+  transform: translateX(28px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  pointer-events: none;
+}
+
+.hero-slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.hero-copy {
+  color: white;
+}
+
+.hero-copy h1 {
+  color: white;
+}
+
+.hero-copy .intro {
+  color: #d7d7dd;
+}
+
+.hero-panel {
+  min-height: 250px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: #1b1b22;
+}
+
+.stat-poster {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.stat-poster div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  background: white;
+  border-radius: 8px;
   color: #111116;
-  border: 1px solid #ffffff;
+}
+
+.stat-poster span {
+  color: #e30613;
+  font-size: 38px;
+  font-weight: 900;
+}
+
+.stat-poster p {
+  margin: 0;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.mini-match {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(227, 6, 19, 0.24), rgba(17, 17, 22, 0.65)),
+    repeating-linear-gradient(
+      90deg,
+      #78050d 0,
+      #78050d 70px,
+      #950713 70px,
+      #950713 140px
+    );
+}
+
+.midline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.goal {
+  position: absolute;
+  top: 35%;
+  width: 26px;
+  height: 76px;
+  border: 2px solid white;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+
+.left-goal {
+  left: 8px;
+  border-left: 0;
+}
+
+.right-goal {
+  right: 8px;
+  border-right: 0;
+}
+
+.ball,
+.dot {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+}
+
+.ball {
+  width: 22px;
+  height: 22px;
+  left: 10%;
+  top: 46%;
+  background:
+    radial-gradient(circle at 50% 50%, #111116 0 4px, transparent 5px),
+    radial-gradient(circle at 30% 28%, #111116 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 28%, #111116 0 2px, transparent 3px),
+    radial-gradient(circle at 30% 72%, #111116 0 2px, transparent 3px),
+    radial-gradient(circle at 70% 72%, #111116 0 2px, transparent 3px),
+    white;
+  border: 2px solid #111116;
+  animation: ballPass 5s ease-in-out infinite;
+}
+
+.dot {
+  width: 18px;
+  height: 18px;
+  border: 2px solid white;
+}
+
+.red-dot {
+  background: #e30613;
+}
+
+.white-dot {
+  background: white;
+  border-color: #111116;
+}
+
+.dot.one { left: 10%; top: 46%; animation: playerTouchOne 5s ease-in-out infinite; }
+.dot.two { left: 20%; top: 22%; animation: playerMoveB 5s ease-in-out infinite; }
+.dot.three { left: 22%; top: 70%; animation: playerMoveC 5s ease-in-out infinite; }
+.dot.four { left: 34%; top: 34%; animation: playerTouchFour 5s ease-in-out infinite; }
+.dot.five { left: 38%; top: 58%; animation: playerMoveB 5s ease-in-out infinite; }
+.dot.six { left: 47%; top: 44%; animation: playerTouchSix 5s ease-in-out infinite; }
+.dot.seven { right: 10%; top: 46%; animation: playerTouchSeven 5s ease-in-out infinite; }
+.dot.eight { right: 20%; top: 22%; animation: playerMoveC 5s ease-in-out infinite; }
+.dot.nine { right: 22%; top: 70%; animation: playerMoveA 5s ease-in-out infinite; }
+.dot.ten { right: 34%; top: 34%; animation: playerTouchTen 5s ease-in-out infinite; }
+.dot.eleven { right: 38%; top: 58%; animation: playerMoveC 5s ease-in-out infinite; }
+.dot.twelve { right: 47%; top: 44%; animation: playerTouchTwelve 5s ease-in-out infinite; }
+
+.scout-poster {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 22px;
+}
+
+.scout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  background: #0b0b0f;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.scout-row span {
+  color: #d7d7dd;
+  font-weight: 900;
+}
+
+.scout-row strong {
+  color: white;
+}
+
+.hero-dots {
+  position: absolute;
+  left: 30px;
+  bottom: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+.hero-dot {
+  width: 24px;
+  height: 4px;
+  background: #4a4a54;
+  border-radius: 999px;
+}
+
+.hero-dot.active {
+  background: #e30613;
+}
+
+@keyframes ballPass {
+  0%, 8% { left: 10%; top: 46%; }
+  22%, 28% { left: 34%; top: 34%; }
+  42%, 48% { left: 47%; top: 44%; }
+  58%, 64% { left: 53%; top: 44%; }
+  74%, 80% { left: 66%; top: 34%; }
+  92%, 100% { left: 90%; top: 46%; }
+}
+
+@keyframes playerMoveA {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(22px, 14px); }
+}
+
+@keyframes playerMoveB {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-18px, -16px); }
+}
+
+@keyframes playerMoveC {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(12px, -22px); }
+}
+
+@keyframes playerTouchOne {
+  0%, 8%, 100% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
+  18%, 90% { transform: scale(1); box-shadow: none; }
+}
+
+@keyframes playerTouchFour {
+  0%, 18%, 35%, 100% { transform: scale(1); box-shadow: none; }
+  22%, 28% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
+}
+
+@keyframes playerTouchSix {
+  0%, 38%, 55%, 100% { transform: scale(1); box-shadow: none; }
+  42%, 48% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
+}
+
+@keyframes playerTouchTwelve {
+  0%, 54%, 70%, 100% { transform: scale(1); box-shadow: none; }
+  58%, 64% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
+}
+
+@keyframes playerTouchTen {
+  0%, 70%, 86%, 100% { transform: scale(1); box-shadow: none; }
+  74%, 80% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
+}
+
+@keyframes playerTouchSeven {
+  0%, 88% { transform: scale(1); box-shadow: none; }
+  92%, 100% { transform: scale(1.22); box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.2); }
 }
 
 .eyebrow {
@@ -272,6 +537,169 @@ h1 {
   margin: 14px 0 0;
   color: white;
   font-weight: 900;
+}
+
+/* Shared filter controls */
+.filter-toggle {
+  margin: 0 0 12px;
+  border: 1px solid #4a4a54;
+  border-radius: 999px;
+  padding: 10px 15px;
+  color: white;
+  background: #1b1b22;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.filter-toggle:hover {
+  color: #e30613;
+  background: white;
+}
+
+.modal-filter-toggle {
+  margin-bottom: 14px;
+}
+
+.filter-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.filter-tools label {
+  display: grid;
+  gap: 7px;
+  color: #c9c9d1;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.filter-tools select,
+.filter-tools input {
+  min-height: 42px;
+  padding: 10px 12px;
+  color: white;
+  background: #1b1b22;
+  border: 1px solid #4a4a54;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.modal-filters {
+  margin-bottom: 14px;
+}
+
+/* Team advice ranking list */
+.advice-list {
+  display: grid;
+  gap: 12px;
+}
+
+.advice-card {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 16px;
+  padding: 16px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.advice-rank {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  color: #e30613;
+  background: white;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.advice-card h3 {
+  margin: 0 0 8px;
+  color: white;
+  font-size: 22px;
+}
+
+.advice-card p {
+  margin: 0 0 5px;
+  color: #c9c9d1;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.advice-card strong {
+  color: white;
+}
+
+.advice-reason {
+  margin-top: 10px;
+  color: white;
+  font-weight: 800;
+}
+
+/* Captain data cards */
+.captain-card {
+  padding: 18px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-radius: 8px;
+}
+
+.captain-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.captain-score {
+  margin: 0;
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.captain-card h3 {
+  margin: 0 0 12px;
+  color: white;
+  font-size: 24px;
+}
+
+.captain-data {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 12px;
+}
+
+.captain-data p {
+  margin: 0;
+  color: #c9c9d1;
+  font-size: 13px;
+}
+
+.captain-data strong {
+  color: white;
+}
+
+.captain-reason {
+  margin: 14px 0 0;
+  color: white;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.captain-note {
+  margin: 10px 0 0;
+  color: #f5c6cb;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* Football pitch view for the user's XI */
@@ -529,12 +957,25 @@ h1 {
   flex: 0 0 190px;
 }
 
+.selection-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
 .selection-panel {
-  margin-top: 24px;
+  width: min(920px, 100%);
+  max-height: 86vh;
+  overflow: auto;
   padding: 18px;
   background: #111116;
   border: 1px solid #303038;
   border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
 }
 
 .selection-heading {
@@ -566,10 +1007,17 @@ h1 {
   background: white;
 }
 
-#customPlayerSearch {
+.selection-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+#customPlayerSearch,
+#customPlayerSort {
   width: 100%;
   min-height: 42px;
-  margin-bottom: 14px;
   padding: 10px 12px;
   color: white;
   background: #1b1b22;
@@ -633,9 +1081,26 @@ h1 {
     padding: 24px 14px;
   }
 
-  .hero,
   .helper-section {
     padding: 24px 18px;
+  }
+
+  .hero-carousel {
+    min-height: 620px;
+  }
+
+  .hero-slide {
+    grid-template-columns: 1fr;
+    align-content: start;
+    padding: 28px 20px 58px;
+  }
+
+  .hero-panel {
+    min-height: 230px;
+  }
+
+  .hero-dots {
+    left: 20px;
   }
 
   .section-heading {
@@ -651,6 +1116,10 @@ h1 {
   }
 
   .pool-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .selection-tools {
     grid-template-columns: 1fr;
   }
 }

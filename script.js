@@ -1,4 +1,3 @@
-const buildTeamButton = document.querySelector("#buildTeamButton");
 const helperSection = document.querySelector("#helperSection");
 const tabButtons = document.querySelectorAll(".tab-button");
 const tabPanels = document.querySelectorAll(".tab-panel");
@@ -10,11 +9,38 @@ const playerSearchInput = document.querySelector("#playerSearch");
 const playerSortInput = document.querySelector("#playerSort");
 const customSelectionPanel = document.querySelector("#customSelectionPanel");
 const customPlayerSearchInput = document.querySelector("#customPlayerSearch");
+const customPlayerSortInput = document.querySelector("#customPlayerSort");
 const closeSelectionButton = document.querySelector("#closeSelectionButton");
+const picksCountryFilter = document.querySelector("#picksCountryFilter");
+const picksPositionFilter = document.querySelector("#picksPositionFilter");
+const picksMaxPriceFilter = document.querySelector("#picksMaxPriceFilter");
+const poolCountryFilter = document.querySelector("#poolCountryFilter");
+const poolPositionFilter = document.querySelector("#poolPositionFilter");
+const poolMaxPriceFilter = document.querySelector("#poolMaxPriceFilter");
+const customCountryFilter = document.querySelector("#customCountryFilter");
+const customMaxPriceFilter = document.querySelector("#customMaxPriceFilter");
+const heroSlides = document.querySelectorAll(".hero-slide");
+const heroDots = document.querySelectorAll(".hero-dot");
+const filterToggleButtons = document.querySelectorAll(".filter-toggle");
 
 let allPlayers = [];
 let customSlots = [];
 let activeSlotId = null;
+let activeHeroSlide = 0;
+
+// Rotate the homepage poster every 5 seconds
+function showHeroSlide(index) {
+  heroSlides.forEach((slide) => slide.classList.remove("active"));
+  heroDots.forEach((dot) => dot.classList.remove("active"));
+
+  heroSlides[index].classList.add("active");
+  heroDots[index].classList.add("active");
+}
+
+setInterval(() => {
+  activeHeroSlide = (activeHeroSlide + 1) % heroSlides.length;
+  showHeroSlide(activeHeroSlide);
+}, 5000);
 
 // Load the real player database from players.json
 async function loadPlayerData() {
@@ -88,6 +114,37 @@ function playerScore(player, choices) {
   return score;
 }
 
+// Fill country filter dropdowns from the loaded player data
+function setupCountryFilters(players) {
+  const countries = [...new Set(players.map((player) => player.country))]
+    .filter((country) => country && country !== "needs_check")
+    .sort();
+
+  [picksCountryFilter, poolCountryFilter, customCountryFilter].forEach((select) => {
+    select.innerHTML = `<option value="">All countries</option>`;
+
+    countries.forEach((country) => {
+      const option = document.createElement("option");
+      option.value = country;
+      option.textContent = country;
+      select.appendChild(option);
+    });
+  });
+}
+
+// Apply simple country, position, and price filters
+function filterPlayers(players, filters) {
+  return players.filter((player) => {
+    const maxPrice = Number(filters.maxPrice);
+
+    if (filters.country && player.country !== filters.country) return false;
+    if (filters.position && player.position !== filters.position) return false;
+    if (filters.maxPrice && player.price > maxPrice) return false;
+
+    return true;
+  });
+}
+
 // Create simple recommendation cards
 function showCards(list, elementId) {
   const container = document.querySelector(`#${elementId}`);
@@ -108,42 +165,86 @@ function showCards(list, elementId) {
   });
 }
 
-// Build the "Who To Play" tab from players.json
+// Build the Player Picks tab from players.json
 function showSuggestions(players) {
   const choices = getUserChoices();
-  const suggestions = pickBestPlayers(players, 6, choices).map((player) => ({
-    label: "Start",
-    title: player.name,
-    text: `${player.club} ${player.position}. ${player.short_reason}`,
-    rating: `Choice score: ${Math.round(playerScore(player, choices))}`
-  }));
+  const container = document.querySelector("#suggestionList");
+  const filteredPlayers = filterPlayers(players, {
+    country: picksCountryFilter.value,
+    position: picksPositionFilter.value,
+    maxPrice: picksMaxPriceFilter.value
+  });
+  const playerPicks = pickBestPlayers(filteredPlayers, 15, choices);
 
-  showCards(suggestions, "suggestionList");
+  container.innerHTML = "";
+
+  playerPicks.forEach((player, index) => {
+    const card = document.createElement("article");
+    card.className = "advice-card";
+
+    card.innerHTML = `
+      <div class="advice-rank">#${index + 1}</div>
+      <div>
+        <h3>${player.name}</h3>
+        <p><strong>Country:</strong> ${player.country}</p>
+        <p><strong>Team:</strong> ${player.club}</p>
+        <p><strong>Position:</strong> ${player.position}</p>
+        <p><strong>Price:</strong> ${player.price}</p>
+        <p><strong>Choice score:</strong> ${Math.round(playerScore(player, choices))}</p>
+        <p class="advice-reason">${player.short_reason}</p>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
 }
 
 // Build the captain tab from the best attacking players
 function showCaptains(players) {
   const choices = getUserChoices();
-  const captainPicks = players
+  const captainPlayers = players
     .slice()
     .sort((a, b) => {
       const bScore = b.attack_score * 2 - b.risk_score;
       const aScore = a.attack_score * 2 - a.risk_score;
       return bScore - aScore;
     })
-    .slice(0, 3)
-    .map((player, index) => ({
-      label: index === 0 ? "Best Pick" : "Captain Option",
-      title: player.name,
-      text: `${player.club} ${player.position}. Strong attacking option from the player database.`,
-      rating: `Attack ${player.attack_score} | Risk ${player.risk_score}`
-    }));
+    .slice(0, 6);
 
-  if (choices.riskStyle === "risky") {
-    captainPicks[0].label = "High Upside";
-  }
+  const container = document.querySelector("#captainList");
+  container.innerHTML = "";
 
-  showCards(captainPicks, "captainList");
+  captainPlayers.forEach((player, index) => {
+    const card = document.createElement("article");
+    card.className = "captain-card";
+    const captainScore = player.attack_score * 2 - player.risk_score;
+
+    card.innerHTML = `
+      <div class="captain-top">
+        <p class="card-label">${index === 0 ? "Best Captain" : "Captain Option"}</p>
+        <p class="captain-score">Captain score: ${captainScore}</p>
+      </div>
+      <h3>${player.name}</h3>
+      <div class="captain-data">
+        <p><strong>Country:</strong> ${player.country}</p>
+        <p><strong>Team:</strong> ${player.club}</p>
+        <p><strong>Position:</strong> ${player.position}</p>
+        <p><strong>Price:</strong> ${player.price}</p>
+        <p><strong>Attack:</strong> ${player.attack_score}</p>
+        <p><strong>Defense:</strong> ${player.defense_score}</p>
+        <p><strong>Risk:</strong> ${player.risk_score}</p>
+        <p><strong>Team Elo:</strong> ${player.team_elo || "needs_check"}</p>
+      </div>
+      <p class="captain-reason">${player.short_reason}</p>
+      <p class="captain-note">${player.data_note}</p>
+    `;
+
+    if (choices.riskStyle === "risky" && index === 0) {
+      card.querySelector(".card-label").textContent = "High Upside";
+    }
+
+    container.appendChild(card);
+  });
 }
 
 // Create the formation view with shirt-style player tokens
@@ -187,34 +288,40 @@ function getLineId(position) {
   return "forwardLine";
 }
 
-// Build the next-round outlook tab from team Elo values
+// Build the next-round outlook tab from player countries
 function showOutlook(players) {
-  const teams = [];
+  const countries = [];
 
   players.forEach((player) => {
-    if (!player.team_elo) return;
+    if (!player.country || player.country === "needs_check") return;
 
-    const existingTeam = teams.find((team) => team.name === player.club);
+    const existingCountry = countries.find((country) => country.name === player.country);
+    const score = player.attack_score + player.defense_score - player.risk_score;
 
-    if (existingTeam) {
-      existingTeam.playerCount++;
+    if (existingCountry) {
+      existingCountry.playerCount++;
+      existingCountry.totalScore += score;
     } else {
-      teams.push({
-        name: player.club,
-        elo: player.team_elo,
-        playerCount: 1
+      countries.push({
+        name: player.country,
+        playerCount: 1,
+        totalScore: score
       });
     }
   });
 
-  const outlook = teams
-    .sort((a, b) => b.elo - a.elo)
-    .slice(0, 5)
-    .map((team) => ({
-      label: "Strong Team",
-      title: team.name,
-      text: "This club has a strong team Elo rating in the source data, which can help with future fantasy planning.",
-      rating: `Team Elo: ${team.elo}`
+  const outlook = countries
+    .map((country) => ({
+      ...country,
+      averageScore: Math.round(country.totalScore / country.playerCount)
+    }))
+    .sort((a, b) => b.averageScore - a.averageScore)
+    .slice(0, 8)
+    .map((country) => ({
+      label: "Country Outlook",
+      title: country.name,
+      text: "This country has strong players in the database, which may help when planning future fantasy selections.",
+      rating: `Prototype rating: ${country.averageScore} | Players: ${country.playerCount}`
     }));
 
   showCards(outlook, "outlookList");
@@ -243,7 +350,11 @@ function showPlayerPool(players) {
   const container = document.querySelector("#playerPoolList");
   const searchText = playerSearchInput.value.trim().toLowerCase();
   const sortBy = playerSortInput.value;
-  const filteredPlayers = players
+  const filteredPlayers = filterPlayers(players, {
+    country: poolCountryFilter.value,
+    position: poolPositionFilter.value,
+    maxPrice: poolMaxPriceFilter.value
+  })
     .filter((player) => {
       const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
       return text.includes(searchText);
@@ -401,6 +512,7 @@ function renderPlayerSelection(players) {
   const title = document.querySelector("#selectionTitle");
   const container = document.querySelector("#customPlayerOptions");
   const searchText = customPlayerSearchInput.value.trim().toLowerCase();
+  const sortBy = customPlayerSortInput.value;
   const selectedIds = customSlots
     .filter((item) => item.id !== activeSlotId && item.playerId)
     .map((item) => item.playerId);
@@ -408,14 +520,17 @@ function renderPlayerSelection(players) {
   title.textContent = `Choose ${slot.label}`;
   container.innerHTML = "";
 
-  players
-    .filter((player) => slot.position === "Any" || player.position === slot.position)
+  filterPlayers(players, {
+    country: customCountryFilter.value,
+    position: slot.position === "Any" ? "" : slot.position,
+    maxPrice: customMaxPriceFilter.value
+  })
     .filter((player) => !selectedIds.includes(player.id))
     .filter((player) => {
       const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
       return text.includes(searchText);
     })
-    .sort((a, b) => playerScore(b, getUserChoices()) - playerScore(a, getUserChoices()))
+    .sort((a, b) => sortPlayers(a, b, sortBy))
     .forEach((player) => {
       const card = document.createElement("button");
       card.className = "pool-card selection-card";
@@ -460,13 +575,19 @@ tabButtons.forEach((button) => {
   });
 });
 
-// Load players.json and build the helper when the button is clicked
-buildTeamButton.addEventListener("click", async () => {
-  helperSection.classList.remove("hidden");
-  buildTeamButton.textContent = "Loading Players...";
+// Open and close compact filter panels
+filterToggleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const target = document.querySelector(`#${button.dataset.filterTarget}`);
+    target.classList.toggle("hidden");
+  });
+});
 
+// Load players.json and build the helper when the page opens
+async function startWebsite() {
   try {
     allPlayers = await loadPlayerData();
+    setupCountryFilters(allPlayers);
 
     showSuggestions(allPlayers);
     showCaptains(allPlayers);
@@ -475,13 +596,12 @@ buildTeamButton.addEventListener("click", async () => {
     showPlayerPool(allPlayers);
     showOutlook(allPlayers);
     showWatchlist(allPlayers);
-
-    buildTeamButton.textContent = "Rebuild My Team";
   } catch (error) {
     showLoadError();
-    buildTeamButton.textContent = "Try Again";
   }
-});
+}
+
+startWebsite();
 
 // Rebuild the visible results when the user changes their choices
 [teamStyleInput, riskStyleInput, favoriteCountryInput].forEach((input) => {
@@ -512,15 +632,42 @@ formationSelect.addEventListener("change", () => {
   });
 });
 
-// Search inside the custom player picker
-customPlayerSearchInput.addEventListener("input", () => {
-  if (allPlayers.length === 0 || !activeSlotId) return;
+// Filter the Player Picks tab
+[picksCountryFilter, picksPositionFilter, picksMaxPriceFilter].forEach((input) => {
+  input.addEventListener("input", () => {
+    if (allPlayers.length === 0) return;
 
-  renderPlayerSelection(allPlayers);
+    showSuggestions(allPlayers);
+  });
+});
+
+// Filter the Player Pool tab
+[poolCountryFilter, poolPositionFilter, poolMaxPriceFilter].forEach((input) => {
+  input.addEventListener("input", () => {
+    if (allPlayers.length === 0) return;
+
+    showPlayerPool(allPlayers);
+  });
+});
+
+// Search inside the custom player picker
+[customPlayerSearchInput, customPlayerSortInput, customCountryFilter, customMaxPriceFilter].forEach((input) => {
+  input.addEventListener("input", () => {
+    if (allPlayers.length === 0 || !activeSlotId) return;
+
+    renderPlayerSelection(allPlayers);
+  });
 });
 
 // Close the custom player picker
 closeSelectionButton.addEventListener("click", () => {
+  customSelectionPanel.classList.add("hidden");
+  activeSlotId = null;
+});
+
+customSelectionPanel.addEventListener("click", (event) => {
+  if (event.target !== customSelectionPanel) return;
+
   customSelectionPanel.classList.add("hidden");
   activeSlotId = null;
 });

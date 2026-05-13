@@ -15,17 +15,86 @@
 
   <!-- Main page content -->
   <main class="page">
-    <section class="hero">
-      <p class="eyebrow">World Cup Fantasy</p>
-      <h1>Build a smarter fantasy squad</h1>
-      <p class="intro">Get quick player suggestions, captain ideas, a starting XI view, and team outlooks in one simple helper.</p>
+    <section class="hero-carousel" aria-label="World Cup fantasy helper highlights">
+      <article class="hero-slide active">
+        <div class="hero-copy">
+          <p class="eyebrow">World Cup Fantasy</p>
+          <h1>Build your squad with data, not guesses</h1>
+          <p class="intro">Compare players, test formations, pick captains, and plan future selections from one simple fantasy helper.</p>
+        </div>
+        <div class="hero-panel stat-poster">
+          <div>
+            <span>830</span>
+            <p>players loaded</p>
+          </div>
+          <div>
+            <span>562</span>
+            <p>countries matched</p>
+          </div>
+          <div>
+            <span>5</span>
+            <p>formation options</p>
+          </div>
+        </div>
+      </article>
 
-      <!-- This button reveals the fantasy helper tabs -->
-      <button id="buildTeamButton" class="primary-button">Build My Team</button>
+      <article class="hero-slide">
+        <div class="hero-copy">
+          <p class="eyebrow">Live Matchboard</p>
+          <h1>See the game before you choose</h1>
+          <p class="intro">A playful pitch view brings the squad builder to life while you compare roles, risk, and upside.</p>
+        </div>
+        <div class="hero-panel mini-match">
+          <div class="goal left-goal"></div>
+          <div class="goal right-goal"></div>
+          <div class="midline"></div>
+          <span class="ball"></span>
+          <span class="dot red-dot one"></span>
+          <span class="dot red-dot two"></span>
+          <span class="dot red-dot three"></span>
+          <span class="dot red-dot four"></span>
+          <span class="dot red-dot five"></span>
+          <span class="dot red-dot six"></span>
+          <span class="dot white-dot seven"></span>
+          <span class="dot white-dot eight"></span>
+          <span class="dot white-dot nine"></span>
+          <span class="dot white-dot ten"></span>
+          <span class="dot white-dot eleven"></span>
+          <span class="dot white-dot twelve"></span>
+        </div>
+      </article>
+
+      <article class="hero-slide">
+        <div class="hero-copy">
+          <p class="eyebrow">Scout Room</p>
+          <h1>Filter the noise into a starting XI</h1>
+          <p class="intro">Search the player pool, sort by price or score, and turn your favorite picks into a custom team and bench.</p>
+        </div>
+        <div class="hero-panel scout-poster">
+          <div class="scout-row">
+            <span>Captain</span>
+            <strong>Attack 100</strong>
+          </div>
+          <div class="scout-row">
+            <span>Value Pick</span>
+            <strong>Price 6.5</strong>
+          </div>
+          <div class="scout-row">
+            <span>Safe Pick</span>
+            <strong>Risk 15</strong>
+          </div>
+        </div>
+      </article>
+
+      <div class="hero-dots" aria-hidden="true">
+        <span class="hero-dot active"></span>
+        <span class="hero-dot"></span>
+        <span class="hero-dot"></span>
+      </div>
     </section>
 
-    <!-- The helper appears after the button is clicked -->
-    <section id="helperSection" class="helper-section hidden">
+    <!-- The helper loads automatically when the page opens -->
+    <section id="helperSection" class="helper-section">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Squad Hub</p>
@@ -63,18 +132,39 @@
 
       <!-- Tab buttons switch between each helper view -->
       <div class="tabs">
-        <button class="tab-button active" data-tab="suggestions">Who To Play</button>
+        <button class="tab-button active" data-tab="suggestions">Player Picks</button>
         <button class="tab-button" data-tab="captains">Captain Picks</button>
         <button class="tab-button" data-tab="team">My XI</button>
         <button class="tab-button" data-tab="custom">Create XI</button>
         <button class="tab-button" data-tab="pool">Player Pool</button>
-        <button class="tab-button" data-tab="outlook">Next Round</button>
+        <button class="tab-button" data-tab="outlook">Country Outlook</button>
         <button class="tab-button" data-tab="watchlist">Watchlist</button>
       </div>
 
-      <!-- Player suggestions tab -->
+      <!-- Player picks tab -->
       <div id="suggestions" class="tab-panel active">
-        <div id="suggestionList" class="card-grid"></div>
+        <button class="filter-toggle" data-filter-target="picksFilters">Filters</button>
+        <div id="picksFilters" class="filter-tools hidden">
+          <label>
+            Country
+            <select id="picksCountryFilter"></select>
+          </label>
+          <label>
+            Position
+            <select id="picksPositionFilter">
+              <option value="">All positions</option>
+              <option value="Goalkeeper">Goalkeeper</option>
+              <option value="Defender">Defender</option>
+              <option value="Midfielder">Midfielder</option>
+              <option value="Forward">Forward</option>
+            </select>
+          </label>
+          <label>
+            Max price
+            <input id="picksMaxPriceFilter" type="number" min="0" step="0.1" placeholder="Any">
+          </label>
+        </div>
+        <div id="suggestionList" class="advice-list"></div>
       </div>
 
       <!-- Captain picks tab -->
@@ -114,7 +204,11 @@
         </div>
         <h3 class="custom-title bench-title">Bench</h3>
         <div id="benchList" class="bench-line"></div>
-        <div id="customSelectionPanel" class="selection-panel hidden">
+      </div>
+
+      <!-- Player selection popup -->
+      <div id="customSelectionPanel" class="selection-overlay hidden">
+        <div class="selection-panel">
           <div class="selection-heading">
             <div>
               <p class="eyebrow">Choose Player</p>
@@ -122,7 +216,29 @@
             </div>
             <button id="closeSelectionButton" class="small-button">Close</button>
           </div>
-          <input id="customPlayerSearch" type="search" placeholder="Search players for this slot">
+          <div class="selection-tools">
+            <input id="customPlayerSearch" type="search" placeholder="Search players for this slot">
+            <select id="customPlayerSort">
+              <option value="points">Best overall</option>
+              <option value="priceLow">Price: low to high</option>
+              <option value="priceHigh">Price: high to low</option>
+              <option value="club">Club</option>
+              <option value="attack">Attack score</option>
+              <option value="defense">Defense score</option>
+              <option value="risk">Risk score</option>
+            </select>
+          </div>
+          <button class="filter-toggle modal-filter-toggle" data-filter-target="customFilters">Filters</button>
+          <div id="customFilters" class="filter-tools modal-filters hidden">
+            <label>
+              Country
+              <select id="customCountryFilter"></select>
+            </label>
+            <label>
+              Max price
+              <input id="customMaxPriceFilter" type="number" min="0" step="0.1" placeholder="Any">
+            </label>
+          </div>
           <div id="customPlayerOptions" class="pool-grid selection-grid"></div>
         </div>
       </div>
@@ -149,11 +265,32 @@
             </select>
           </label>
         </div>
+        <button class="filter-toggle" data-filter-target="poolFilters">Filters</button>
+        <div id="poolFilters" class="filter-tools hidden">
+          <label>
+            Country
+            <select id="poolCountryFilter"></select>
+          </label>
+          <label>
+            Position
+            <select id="poolPositionFilter">
+              <option value="">All positions</option>
+              <option value="Goalkeeper">Goalkeeper</option>
+              <option value="Defender">Defender</option>
+              <option value="Midfielder">Midfielder</option>
+              <option value="Forward">Forward</option>
+            </select>
+          </label>
+          <label>
+            Max price
+            <input id="poolMaxPriceFilter" type="number" min="0" step="0.1" placeholder="Any">
+          </label>
+        </div>
         <p id="playerPoolCount" class="pool-count"></p>
         <div id="playerPoolList" class="pool-grid"></div>
       </div>
 
-      <!-- Teams likely to advance tab -->
+      <!-- Countries to watch for future planning tab -->
       <div id="outlook" class="tab-panel">
         <div id="outlookList" class="card-grid"></div>
       </div>
