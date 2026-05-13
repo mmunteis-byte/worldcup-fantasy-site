@@ -59,7 +59,7 @@
       </div>
 
       <!-- Data note for the prototype -->
-      <p class="site-note">This website uses real player names. Some fantasy scores and prices are prototype estimates. Official World Cup fantasy data will be added later if available.</p>
+      <p class="site-note">This website uses real player names from source data. Some countries were matched from a Transfermarkt-style dataset. Some fantasy scores and prices are prototype estimates. Official World Cup fantasy data will be added later if available.</p>
 
       <!-- Tab buttons switch between each helper view -->
       <div class="tabs">
@@ -106,14 +106,39 @@
         </label>
         <div id="customBuilder" class="custom-builder"></div>
         <h3 class="custom-title">Your Custom Starting 11</h3>
-        <div id="customTeamList" class="custom-team-list"></div>
+        <div class="pitch custom-pitch">
+          <div id="customForwardLine" class="player-line"></div>
+          <div id="customMidfieldLine" class="player-line"></div>
+          <div id="customDefenseLine" class="player-line"></div>
+          <div id="customKeeperLine" class="player-line"></div>
+        </div>
         <h3 class="custom-title bench-title">Bench</h3>
         <div id="benchBuilder" class="custom-builder"></div>
-        <div id="benchList" class="custom-team-list"></div>
+        <div id="benchList" class="bench-line"></div>
       </div>
 
       <!-- Full player database tab -->
       <div id="pool" class="tab-panel">
+        <div class="pool-tools">
+          <label>
+            Search players
+            <input id="playerSearch" type="search" placeholder="Name, club, or position">
+          </label>
+
+          <label>
+            Sort by
+            <select id="playerSort">
+              <option value="points">Best overall</option>
+              <option value="priceLow">Price: low to high</option>
+              <option value="priceHigh">Price: high to low</option>
+              <option value="club">Club</option>
+              <option value="position">Position</option>
+              <option value="attack">Attack score</option>
+              <option value="defense">Defense score</option>
+              <option value="risk">Risk score</option>
+            </select>
+          </label>
+        </div>
         <p id="playerPoolCount" class="pool-count"></p>
         <div id="playerPoolList" class="pool-grid"></div>
       </div>

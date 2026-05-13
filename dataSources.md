@@ -73,6 +73,18 @@ This is fantasy-style price data from the FPL data source.
 
 ## Country Or Team Strength
 
+Player country data comes from:
+
+`transfermarktPlayers.csv`
+
+Field used:
+
+- `country_of_citizenship`
+
+If `country_of_citizenship` was missing, `country_of_birth` was available as a backup field.
+
+Players were matched by name. Some players may still show `needs_check` if their name was written differently in the two sources or if they were missing from the country source.
+
 Team strength data is available from:
 
 `FPL-Core-Insights-main/data/2025-2026/teams.csv`

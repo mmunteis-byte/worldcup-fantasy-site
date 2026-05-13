@@ -6,6 +6,8 @@ const teamStyleInput = document.querySelector("#teamStyle");
 const riskStyleInput = document.querySelector("#riskStyle");
 const favoriteCountryInput = document.querySelector("#favoriteCountry");
 const formationSelect = document.querySelector("#formationSelect");
+const playerSearchInput = document.querySelector("#playerSearch");
+const playerSortInput = document.querySelector("#playerSort");
 
 let allPlayers = [];
 
@@ -234,11 +236,19 @@ function showWatchlist(players) {
 function showPlayerPool(players) {
   const count = document.querySelector("#playerPoolCount");
   const container = document.querySelector("#playerPoolList");
+  const searchText = playerSearchInput.value.trim().toLowerCase();
+  const sortBy = playerSortInput.value;
+  const filteredPlayers = players
+    .filter((player) => {
+      const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
+      return text.includes(searchText);
+    })
+    .sort((a, b) => sortPlayers(a, b, sortBy));
 
-  count.textContent = `Showing ${players.length} sourced players from players.json`;
+  count.textContent = `Showing ${filteredPlayers.length} of ${players.length} sourced players`;
   container.innerHTML = "";
 
-  players.forEach((player) => {
+  filteredPlayers.forEach((player) => {
     const card = document.createElement("article");
     card.className = "pool-card";
 
@@ -250,6 +260,19 @@ function showPlayerPool(players) {
 
     container.appendChild(card);
   });
+}
+
+// Sort the player pool using the user's selected option
+function sortPlayers(a, b, sortBy) {
+  if (sortBy === "priceLow") return a.price - b.price;
+  if (sortBy === "priceHigh") return b.price - a.price;
+  if (sortBy === "club") return a.club.localeCompare(b.club);
+  if (sortBy === "position") return a.position.localeCompare(b.position);
+  if (sortBy === "attack") return b.attack_score - a.attack_score;
+  if (sortBy === "defense") return b.defense_score - a.defense_score;
+  if (sortBy === "risk") return a.risk_score - b.risk_score;
+
+  return playerScore(b, getUserChoices()) - playerScore(a, getUserChoices());
 }
 
 // Create dropdowns so the user can choose their own starting 11
@@ -304,26 +327,51 @@ function getFormationPositions() {
 
 // Show the custom players the user selected
 function showCustomTeam(players) {
-  const container = document.querySelector("#customTeamList");
+  document.querySelectorAll(".custom-pitch .player-line").forEach((line) => {
+    line.innerHTML = "";
+  });
+
   const selectedIds = Array.from(document.querySelectorAll(".custom-select"))
     .map((select) => select.value)
     .filter((id) => id);
 
-  container.innerHTML = "";
-
-  selectedIds.forEach((id) => {
+  selectedIds.forEach((id, index) => {
     const player = players.find((item) => item.id === id);
-    const card = document.createElement("article");
-    card.className = "custom-player-card";
+    const line = document.querySelector(`#${getCustomLineId(player.position)}`);
+    const token = createPitchToken(player, index + 1);
 
-    card.innerHTML = `
-      <h4>${player.name}</h4>
-      <p>${player.club} | ${player.position} | Price: ${player.price}</p>
-      <p>Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}</p>
-    `;
-
-    container.appendChild(card);
+    line.appendChild(token);
   });
+}
+
+// Match custom player positions to the correct custom pitch row
+function getCustomLineId(position) {
+  if (position === "Goalkeeper") return "customKeeperLine";
+  if (position === "Defender") return "customDefenseLine";
+  if (position === "Midfielder") return "customMidfieldLine";
+  return "customForwardLine";
+}
+
+// Create one pitch-style player card
+function createPitchToken(player, number) {
+  const token = document.createElement("div");
+  token.className = "player-token";
+
+  token.innerHTML = `
+    <div class="shirt">${number}</div>
+    <p class="token-name">${player.name}</p>
+    <p class="token-position">${player.position}</p>
+    <div class="player-details">
+      <p><strong>Country:</strong> ${player.country}</p>
+      <p><strong>Club:</strong> ${player.club}</p>
+      <p><strong>Price:</strong> ${player.price}</p>
+      <p><strong>Attack:</strong> ${player.attack_score}</p>
+      <p><strong>Defense:</strong> ${player.defense_score}</p>
+      <p><strong>Risk:</strong> ${player.risk_score}</p>
+    </div>
+  `;
+
+  return token;
 }
 
 // Create 5 bench slots from the full player database
@@ -368,14 +416,7 @@ function showBench(players) {
 
   selectedIds.forEach((id) => {
     const player = players.find((item) => item.id === id);
-    const card = document.createElement("article");
-    card.className = "custom-player-card";
-
-    card.innerHTML = `
-      <h4>${player.name}</h4>
-      <p>${player.club} | ${player.position} | Price: ${player.price}</p>
-      <p>Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}</p>
-    `;
+    const card = createPitchToken(player, index + 1);
 
     container.appendChild(card);
   });
@@ -445,4 +486,13 @@ formationSelect.addEventListener("change", () => {
   if (allPlayers.length === 0) return;
 
   showCustomBuilder(allPlayers);
+});
+
+// Search and sort the full player pool
+[playerSearchInput, playerSortInput].forEach((input) => {
+  input.addEventListener("input", () => {
+    if (allPlayers.length === 0) return;
+
+    showPlayerPool(allPlayers);
+  });
 });
