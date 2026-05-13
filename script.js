@@ -1,110 +1,48 @@
-// Fake starting 11 for the formation tab
-const players = [
-  { number: 1, name: "Alisson Becker", position: "GK", line: "keeperLine" },
-  { number: 2, name: "Achraf Hakimi", position: "DEF", line: "defenseLine" },
-  { number: 3, name: "Virgil van Dijk", position: "DEF", line: "defenseLine" },
-  { number: 4, name: "Marquinhos", position: "DEF", line: "defenseLine" },
-  { number: 5, name: "Theo Hernandez", position: "DEF", line: "defenseLine" },
-  { number: 6, name: "Jude Bellingham", position: "MID", line: "midfieldLine" },
-  { number: 7, name: "Kevin De Bruyne", position: "MID", line: "midfieldLine" },
-  { number: 8, name: "Federico Valverde", position: "MID", line: "midfieldLine" },
-  { number: 9, name: "Kylian Mbappe", position: "FWD", line: "forwardLine" },
-  { number: 10, name: "Lionel Messi", position: "FWD", line: "forwardLine" },
-  { number: 11, name: "Vinicius Junior", position: "FWD", line: "forwardLine" }
-];
-
-// Simple fantasy recommendations
-const suggestions = [
-  {
-    label: "Start",
-    title: "Kylian Mbappe",
-    text: "High goal threat, penalty potential, and usually central to his team's attack.",
-    rating: "Confidence: High"
-  },
-  {
-    label: "Start",
-    title: "Jude Bellingham",
-    text: "A strong pick because he can earn points from goals, assists, and midfield involvement.",
-    rating: "Confidence: High"
-  },
-  {
-    label: "Risky",
-    title: "Rotation Defender",
-    text: "Avoid defenders from teams that may rotate. Clean sheet points disappear fast if they do not start.",
-    rating: "Confidence: Medium"
-  }
-];
-
-// Captain options with short reasons
-const captainPicks = [
-  {
-    label: "Best Pick",
-    title: "Kylian Mbappe",
-    text: "Captain him when he faces a weaker defense because his scoring ceiling is huge.",
-    rating: "Upside: Very High"
-  },
-  {
-    label: "Safe Pick",
-    title: "Lionel Messi",
-    text: "A good captain if you want creativity, set pieces, and goal involvement.",
-    rating: "Upside: High"
-  },
-  {
-    label: "Differential",
-    title: "Kevin De Bruyne",
-    text: "Useful when you want a less obvious captain who can still deliver assists and bonus points.",
-    rating: "Upside: Medium"
-  }
-];
-
-// Teams that could be useful for future fantasy planning
-const outlookTeams = [
-  {
-    label: "Strong Outlook",
-    title: "France",
-    text: "Deep squad, strong attack, and likely to create fantasy value across multiple rounds.",
-    rating: "Future Value: High"
-  },
-  {
-    label: "Strong Outlook",
-    title: "Brazil",
-    text: "Good attacking options and clean sheet potential make them useful for long-term planning.",
-    rating: "Future Value: High"
-  },
-  {
-    label: "Watch Closely",
-    title: "England",
-    text: "Lots of fantasy options, but choosing nailed starters matters because the squad is deep.",
-    rating: "Future Value: Medium"
-  }
-];
-
-// Extra tab idea: players to monitor before making transfers
-const watchlist = [
-  {
-    label: "Transfer Target",
-    title: "Attacking Fullbacks",
-    text: "Look for defenders who cross often. They can get clean sheets and attacking returns.",
-    rating: "Priority: High"
-  },
-  {
-    label: "Value Pick",
-    title: "Budget Midfielders",
-    text: "Cheap midfielders who start every match help you spend more on premium forwards.",
-    rating: "Priority: Medium"
-  },
-  {
-    label: "Avoid",
-    title: "Injury Doubts",
-    text: "Do not waste transfers on players who may only play limited minutes.",
-    rating: "Priority: High"
-  }
-];
-
 const buildTeamButton = document.querySelector("#buildTeamButton");
 const helperSection = document.querySelector("#helperSection");
 const tabButtons = document.querySelectorAll(".tab-button");
 const tabPanels = document.querySelectorAll(".tab-panel");
+
+let allPlayers = [];
+
+// Load the real player database from players.json
+async function loadPlayerData() {
+  const response = await fetch("players.json");
+
+  if (!response.ok) {
+    throw new Error("Could not load players.json");
+  }
+
+  return response.json();
+}
+
+// Pick a simple 4-3-3 team from the player database
+function buildStartingTeam(players) {
+  const goalkeepers = players.filter((player) => player.position === "Goalkeeper");
+  const defenders = players.filter((player) => player.position === "Defender");
+  const midfielders = players.filter((player) => player.position === "Midfielder");
+  const forwards = players.filter((player) => player.position === "Forward");
+
+  return [
+    ...pickBestPlayers(goalkeepers, 1),
+    ...pickBestPlayers(defenders, 4),
+    ...pickBestPlayers(midfielders, 3),
+    ...pickBestPlayers(forwards, 3)
+  ];
+}
+
+// Sort players using the prototype scores from players.json
+function pickBestPlayers(players, amount) {
+  return players
+    .slice()
+    .sort((a, b) => playerScore(b) - playerScore(a))
+    .slice(0, amount);
+}
+
+// Higher attack/defense is good, higher risk is bad
+function playerScore(player) {
+  return player.attack_score + player.defense_score - player.risk_score;
+}
 
 // Create simple recommendation cards
 function showCards(list, elementId) {
@@ -126,25 +64,124 @@ function showCards(list, elementId) {
   });
 }
 
+// Build the "Who To Play" tab from players.json
+function showSuggestions(players) {
+  const suggestions = pickBestPlayers(players, 6).map((player) => ({
+    label: "Start",
+    title: player.name,
+    text: `${player.club} ${player.position}. ${player.short_reason}`,
+    rating: `Attack ${player.attack_score} | Defense ${player.defense_score} | Risk ${player.risk_score}`
+  }));
+
+  showCards(suggestions, "suggestionList");
+}
+
+// Build the captain tab from the best attacking players
+function showCaptains(players) {
+  const captainPicks = players
+    .slice()
+    .sort((a, b) => b.attack_score - a.attack_score)
+    .slice(0, 3)
+    .map((player, index) => ({
+      label: index === 0 ? "Best Pick" : "Captain Option",
+      title: player.name,
+      text: `${player.club} ${player.position}. Strong prototype attack score from the player database.`,
+      rating: `Attack score: ${player.attack_score}`
+    }));
+
+  showCards(captainPicks, "captainList");
+}
+
 // Create the formation view with shirt-style player tokens
-function showTeam() {
+function showTeam(players) {
+  const team = buildStartingTeam(players);
+
   document.querySelectorAll(".player-line").forEach((line) => {
     line.innerHTML = "";
   });
 
-  players.forEach((player) => {
-    const line = document.querySelector(`#${player.line}`);
+  team.forEach((player, index) => {
+    const line = document.querySelector(`#${getLineId(player.position)}`);
     const token = document.createElement("div");
     token.className = "player-token";
 
     token.innerHTML = `
-      <div class="shirt">${player.number}</div>
+      <div class="shirt">${index + 1}</div>
       <p class="token-name">${player.name}</p>
       <p class="token-position">${player.position}</p>
     `;
 
     line.appendChild(token);
   });
+}
+
+// Match positions to the correct pitch row
+function getLineId(position) {
+  if (position === "Goalkeeper") return "keeperLine";
+  if (position === "Defender") return "defenseLine";
+  if (position === "Midfielder") return "midfieldLine";
+  return "forwardLine";
+}
+
+// Build the next-round outlook tab from team Elo values
+function showOutlook(players) {
+  const teams = [];
+
+  players.forEach((player) => {
+    if (!player.team_elo) return;
+
+    const existingTeam = teams.find((team) => team.name === player.club);
+
+    if (existingTeam) {
+      existingTeam.playerCount++;
+    } else {
+      teams.push({
+        name: player.club,
+        elo: player.team_elo,
+        playerCount: 1
+      });
+    }
+  });
+
+  const outlook = teams
+    .sort((a, b) => b.elo - a.elo)
+    .slice(0, 5)
+    .map((team) => ({
+      label: "Strong Team",
+      title: team.name,
+      text: "This club has a strong team Elo rating in the source data, which can help with future fantasy planning.",
+      rating: `Team Elo: ${team.elo}`
+    }));
+
+  showCards(outlook, "outlookList");
+}
+
+// Build the watchlist from cheaper players with useful prototype scores
+function showWatchlist(players) {
+  const watchlist = players
+    .filter((player) => player.price <= 7.5)
+    .sort((a, b) => playerScore(b) - playerScore(a))
+    .slice(0, 6)
+    .map((player) => ({
+      label: "Watchlist",
+      title: player.name,
+      text: `${player.club} ${player.position}. A lower-price option to watch before making transfers.`,
+      rating: `Price: ${player.price}`
+    }));
+
+  showCards(watchlist, "watchlistList");
+}
+
+// Show a helpful message if players.json cannot load
+function showLoadError() {
+  showCards([
+    {
+      label: "Error",
+      title: "players.json did not load",
+      text: "Run the site with a local server instead of double-clicking index.html.",
+      rating: "Try: python3 -m http.server 8000"
+    }
+  ], "suggestionList");
 }
 
 // Switch tabs when a tab button is clicked
@@ -158,13 +195,23 @@ tabButtons.forEach((button) => {
   });
 });
 
-// Show the full helper when the button is clicked
-buildTeamButton.addEventListener("click", () => {
+// Load players.json and build the helper when the button is clicked
+buildTeamButton.addEventListener("click", async () => {
   helperSection.classList.remove("hidden");
+  buildTeamButton.textContent = "Loading Players...";
 
-  showCards(suggestions, "suggestionList");
-  showCards(captainPicks, "captainList");
-  showCards(outlookTeams, "outlookList");
-  showCards(watchlist, "watchlistList");
-  showTeam();
+  try {
+    allPlayers = await loadPlayerData();
+
+    showSuggestions(allPlayers);
+    showCaptains(allPlayers);
+    showTeam(allPlayers);
+    showOutlook(allPlayers);
+    showWatchlist(allPlayers);
+
+    buildTeamButton.textContent = "Rebuild My Team";
+  } catch (error) {
+    showLoadError();
+    buildTeamButton.textContent = "Try Again";
+  }
 });
