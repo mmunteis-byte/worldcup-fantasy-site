@@ -1,0 +1,62 @@
+{
+  "rules_version": "week_5_draft",
+  "rules_status": "Draft rules based on past tournament fantasy games. Not official FIFA World Cup 2026 fantasy rules.",
+  "squad": {
+    "total_players": 15,
+    "positions": {
+      "GK": 2,
+      "DEF": 5,
+      "MID": 5,
+      "FWD": 3
+    }
+  },
+  "starting_lineup": {
+    "total_players": 11,
+    "allowed_formations": [
+      "3-4-3",
+      "3-5-2",
+      "4-3-3",
+      "4-4-2",
+      "4-5-1",
+      "5-3-2",
+      "5-4-1"
+    ]
+  },
+  "budget": {
+    "initial_budget": 100,
+    "currency_label": "fantasy units"
+  },
+  "country_limits": {
+    "group_stage_max_per_country": 3,
+    "knockout_limits_prototype": {
+      "round_of_16": 4,
+      "quarter_final": 5,
+      "semi_final": 6,
+      "final": 8
+    }
+  },
+  "captain": {
+    "captain_required": true,
+    "captain_points_multiplier": 2
+  },
+  "transfers": {
+    "status": "document_only_for_week_5",
+    "notes": "Transfer rules are researched but not fully implemented this week."
+  },
+  "chips": {
+    "status": "document_only_for_week_5",
+    "notes": "Chips or boosters are researched but not fully implemented this week."
+  },
+  "scoring": {
+    "status": "simplified_for_week_5",
+    "notes": "The website uses prototype player scores for now."
+  },
+  "validation_checks": {
+    "check_squad_size": true,
+    "check_position_counts": true,
+    "check_budget": true,
+    "check_country_limit": true,
+    "check_starting_11": true,
+    "check_captain": true
+  }
+}
