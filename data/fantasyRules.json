@@ -1,0 +1,356 @@
+{
+  "rules_version": "week_6_official_fifa_check_2026_06_04",
+  "rules_status": "Official FIFA Fantasy rules where confirmed from visible FIFA sources. Fields marked needs_check were not clearly visible in the checked official pages.",
+  "source_of_truth": "FIFA World Cup Fantasy",
+  "sources": [
+    {
+      "name": "FIFA World Cup Fantasy game",
+      "url": "https://play.fifa.com/fantasy/",
+      "used_for": [
+        "official game page",
+        "player pool visibility",
+        "player price examples",
+        "budget display",
+        "deadline display"
+      ],
+      "access_note": "The page is a JavaScript app. Some rules were not visible in basic page text."
+    },
+    {
+      "name": "FIFA World Cup Fantasy help",
+      "url": "https://play.fifa.com/fantasy/help",
+      "used_for": [
+        "official help/rules page to check"
+      ],
+      "access_note": "The page is a JavaScript app. Detailed help text was not visible in basic page text."
+    },
+    {
+      "name": "FIFA World Cup Fantasy launched article",
+      "url": "https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/world-cup-fantasy-game-launched",
+      "used_for": [
+        "squad size",
+        "positions required",
+        "budget",
+        "country limit summary",
+        "knockout budget increase",
+        "fixed prices",
+        "substitutions and captain switching summary",
+        "boosters list",
+        "transfer summary",
+        "scoring categories"
+      ]
+    }
+  ],
+  "squad": {
+    "total_players": {
+      "value": 15,
+      "status": "official_confirmed"
+    },
+    "positions": {
+      "GK": {
+        "label": "Goalkeeper",
+        "required": 2,
+        "status": "official_confirmed"
+      },
+      "DEF": {
+        "label": "Defender",
+        "required": 5,
+        "status": "official_confirmed"
+      },
+      "MID": {
+        "label": "Midfielder",
+        "required": 5,
+        "status": "official_confirmed"
+      },
+      "FWD": {
+        "label": "Forward",
+        "required": 3,
+        "status": "official_confirmed"
+      }
+    }
+  },
+  "starting_lineup": {
+    "total_players": {
+      "value": 11,
+      "status": "needs_check",
+      "note": "The official article confirms bench substitutions and captains, but the exact starting lineup rule was not clearly visible in the checked official 2026 pages."
+    },
+    "allowed_formations": {
+      "value": [
+        "3-4-3",
+        "3-5-2",
+        "4-3-3",
+        "4-4-2",
+        "4-5-1",
+        "5-3-2",
+        "5-4-1"
+      ],
+      "status": "needs_check",
+      "note": "These were already used in the Week 5 prototype, but the exact 2026 official formation list was not visible in the checked official pages."
+    }
+  },
+  "budget": {
+    "initial_budget": {
+      "value": 100,
+      "currency_label": "million dollars",
+      "display": "$100m",
+      "status": "official_confirmed"
+    },
+    "knockout_budget_increase": {
+      "value": 5,
+      "currency_label": "million dollars",
+      "display": "$5m",
+      "status": "official_confirmed"
+    },
+    "knockout_budget": {
+      "value": 105,
+      "currency_label": "million dollars",
+      "display": "$105m",
+      "status": "official_confirmed",
+      "note": "Calculated from the official $100m starting budget plus the official $5m knockout increase."
+    }
+  },
+  "player_prices": {
+    "source": "FIFA World Cup Fantasy player pool",
+    "status": "official_confirmed",
+    "prices_change_during_tournament": {
+      "value": false,
+      "status": "official_confirmed",
+      "note": "FIFA says player prices will not fluctuate throughout the tournament."
+    },
+    "examples_visible_from_official_player_pool": [
+      {
+        "name": "Kane",
+        "position": "FWD",
+        "price": 10.5
+      },
+      {
+        "name": "Mbappe",
+        "position": "FWD",
+        "price": 10.5
+      },
+      {
+        "name": "Haaland",
+        "position": "FWD",
+        "price": 10.5
+      },
+      {
+        "name": "Messi",
+        "position": "FWD",
+        "price": 10
+      },
+      {
+        "name": "Vinicius Junior",
+        "position": "MID",
+        "price": 10
+      }
+    ],
+    "full_player_pool_file": "needs_check"
+  },
+  "nation_limits": {
+    "rule_summary": {
+      "status": "official_confirmed",
+      "note": "FIFA confirms restrictions on how many players can be selected from the same nation, starting with three per nation in the group stage."
+    },
+    "by_round": {
+      "group_stage": {
+        "max_players_per_nation": 3,
+        "status": "official_confirmed"
+      },
+      "round_of_32": {
+        "max_players_per_nation": "needs_check",
+        "status": "needs_check"
+      },
+      "round_of_16": {
+        "max_players_per_nation": "needs_check",
+        "status": "needs_check"
+      },
+      "quarter_final": {
+        "max_players_per_nation": "needs_check",
+        "status": "needs_check"
+      },
+      "semi_final": {
+        "max_players_per_nation": "needs_check",
+        "status": "needs_check"
+      },
+      "final": {
+        "max_players_per_nation": "needs_check",
+        "status": "needs_check"
+      }
+    }
+  },
+  "captain": {
+    "captain_points_multiplier": {
+      "value": "needs_check",
+      "status": "needs_check",
+      "note": "FIFA confirms users can switch captains during each Matchday, but the exact 2026 captain multiplier was not visible in the checked official 2026 pages."
+    },
+    "captain_required": {
+      "value": "needs_check",
+      "status": "needs_check"
+    },
+    "captain_switching": {
+      "value": true,
+      "status": "official_confirmed",
+      "note": "FIFA confirms users can switch captains during each Matchday."
+    },
+    "vice_captain": {
+      "value": "needs_check",
+      "status": "needs_check"
+    }
+  },
+  "substitutions": {
+    "bench_substitutions_during_matchday": {
+      "value": true,
+      "status": "official_confirmed"
+    },
+    "manual_substitution_details": {
+      "value": "needs_check",
+      "status": "needs_check"
+    },
+    "automatic_substitutions": {
+      "value": "needs_check",
+      "status": "needs_check"
+    },
+    "bench_order_rules": {
+      "value": "needs_check",
+      "status": "needs_check"
+    }
+  },
+  "transfers": {
+    "unlimited_before_matchday_1": {
+      "value": true,
+      "status": "official_confirmed"
+    },
+    "unlimited_before_round_of_32": {
+      "value": true,
+      "status": "official_confirmed"
+    },
+    "limits_for_other_stages": {
+      "value": "needs_check",
+      "status": "needs_check",
+      "note": "FIFA confirms limits are in place for other stages, but the exact number of free transfers by round was not visible in the checked official pages."
+    },
+    "extra_transfer_penalty": {
+      "value": "needs_check",
+      "status": "needs_check"
+    },
+    "rollover_transfers": {
+      "value": "needs_check",
+      "status": "needs_check"
+    }
+  },
+  "boosters": {
+    "status": "official_confirmed_names_only",
+    "one_booster_at_a_time": {
+      "value": "needs_check",
+      "status": "needs_check"
+    },
+    "available_boosters": [
+      {
+        "name": "Wildcard",
+        "status": "official_confirmed",
+        "mechanics": "needs_check"
+      },
+      {
+        "name": "12th Man",
+        "status": "official_confirmed",
+        "mechanics": "needs_check"
+      },
+      {
+        "name": "Maximum Captain",
+        "status": "official_confirmed",
+        "mechanics": "needs_check"
+      },
+      {
+        "name": "Qualification Booster",
+        "status": "official_confirmed",
+        "mechanics": "needs_check"
+      },
+      {
+        "name": "Mystery Booster",
+        "status": "official_confirmed",
+        "mechanics": "needs_check",
+        "note": "FIFA says this will be revealed ahead of the Round of 32."
+      }
+    ]
+  },
+  "deadlines": {
+    "first_match_deadline_rule": {
+      "value": "Unlimited changes can be made until the first FIFA World Cup match kicks off on Thursday, 11 June.",
+      "status": "official_confirmed"
+    },
+    "matchday_1_deadline_displayed": {
+      "value": "11 June, 20:00",
+      "status": "needs_check",
+      "note": "Visible in FIFA Play Zone indexed text. Time zone should be checked in the live app."
+    },
+    "transfers_deadline_displayed": {
+      "value": "11 June, 19:00",
+      "status": "needs_check",
+      "note": "Visible in FIFA Fantasy team page indexed text. Time zone and reason for difference from Play Zone display should be checked."
+    },
+    "deadline_timezone": {
+      "value": "needs_check",
+      "status": "needs_check"
+    }
+  },
+  "scoring": {
+    "status": "official_confirmed_categories_only",
+    "point_values_status": "needs_check",
+    "categories_confirmed_by_fifa": [
+      "minutes played",
+      "goals scored",
+      "goals conceded",
+      "assists",
+      "cards received",
+      "own goals",
+      "winning a penalty",
+      "conceding a penalty",
+      "tackles",
+      "chances created",
+      "shots on target"
+    ],
+    "additional_scoring_confirmed_by_fifa": [
+      {
+        "name": "direct free-kick goal bonus",
+        "points": "needs_check"
+      },
+      {
+        "name": "scouting bonus",
+        "condition": "player scores more than four points in a match and is owned by fewer than 5% of all teams",
+        "points": "needs_check"
+      }
+    ],
+    "position_specific_point_values": {
+      "GK": "needs_check",
+      "DEF": "needs_check",
+      "MID": "needs_check",
+      "FWD": "needs_check"
+    }
+  },
+  "important_limits_or_special_rules": {
+    "player_pool_status": {
+      "value": "The official game page says the player pool is provisional and will be updated after final squads are confirmed by FIFA on 2 June.",
+      "status": "needs_check",
+      "note": "Because today is after 2 June 2026, check the live app to confirm whether the final update has happened."
+    },
+    "confederation_challenge_leaderboard": {
+      "value": "FIFA mentions a Confederation Challenge Leaderboard based on users' team selections.",
+      "status": "official_confirmed"
+    },
+    "leagues_with_friends": {
+      "value": true,
+      "status": "official_confirmed"
+    }
+  },
+  "validation_checks": {
+    "check_squad_size": true,
+    "check_position_counts": true,
+    "check_budget": true,
+    "check_nation_limit": true,
+    "check_starting_11": "needs_check",
+    "check_captain": "needs_check",
+    "check_deadline": "needs_check",
+    "check_booster_rules": "needs_check"
+  }
+}

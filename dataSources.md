@@ -118,3 +118,32 @@ For now, these fields are helper estimates for the website prototype. They are m
 ## Important Note
 
 The source data is Fantasy Premier League data, not official World Cup national-team data. It is still useful for this project because it provides real player names, clubs, positions, fantasy prices, and performance data.
+
+## Week 6 Official FIFA Fantasy Data
+
+Week 6 starts a new official FIFA Fantasy data sprint.
+
+New official-data files are stored in:
+
+- `data/fifaFantasyPlayers.json`
+- `data/fantasyRules.json`
+- `data/teams.json`
+- `data/fixtures.json`
+- `data/dataSources.md`
+- `data/dataQualityReport.md`
+
+Official FIFA Fantasy links checked:
+
+- https://play.fifa.com/fantasy/
+- https://play.fifa.com/fantasy/help
+- https://play.fifa.com/fantasy/team
+- https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/match-schedule-fixtures-results-teams-stadiums
+- https://github.com/openfootball/worldcup.json
+
+Important note:
+
+The current `data/fifaFantasyPlayers.json` only includes official FIFA Fantasy player rows that were visible from the checked official player pool text. It is partial official data, not the full player pool yet.
+
+If a field was not visible from FIFA, it was set to `null` or marked as `needs_check`.
+
+The current `data/fixtures.json` includes the 72 World Cup 2026 group-stage fixtures from openfootball's reusable World Cup 2026 JSON. FIFA's official fixture page was checked first, but a complete reusable official table was not visible in this pass.

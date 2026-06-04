@@ -47,10 +47,10 @@ setInterval(() => {
 
 // Load the real player database from players.json
 async function loadPlayerData() {
-  const response = await fetch("players.json");
+  const response = await fetch("data/players.json");
 
   if (!response.ok) {
-    throw new Error("Could not load players.json");
+    throw new Error("Could not load data/players.json");
   }
 
   return response.json();
@@ -58,34 +58,142 @@ async function loadPlayerData() {
 
 // Load the draft fantasy rules from fantasyRules.json
 async function loadFantasyRules() {
-  const response = await fetch("fantasyRules.json");
+  const response = await fetch("data/fantasyRules.json");
 
   if (!response.ok) {
-    throw new Error("Could not load fantasyRules.json");
+    throw new Error("Could not load data/fantasyRules.json");
   }
 
   return response.json();
 }
 
+// Some official rules are stored as objects with a value, status, and note.
+function getRuleValue(rule) {
+  if (rule && typeof rule === "object" && "value" in rule) return rule.value;
+  return rule;
+}
+
+// Read official squad position requirements from data/fantasyRules.json.
+function getPositionRules() {
+  const positions = fantasyRules.squad.positions;
+
+  return {
+    GK: getRuleValue(positions.GK.required),
+    DEF: getRuleValue(positions.DEF.required),
+    MID: getRuleValue(positions.MID.required),
+    FWD: getRuleValue(positions.FWD.required)
+  };
+}
+
+function getPositionLabel(positionCode) {
+  const labels = fantasyRules?.squad?.positions || {};
+  return getRuleValue(labels[positionCode]?.label) || positionCode;
+}
+
+function getSquadSizeRule() {
+  return getRuleValue(fantasyRules.squad.total_players);
+}
+
+function getStartingLineupSizeRule() {
+  return getRuleValue(fantasyRules.starting_lineup.total_players);
+}
+
+function getAllowedFormations() {
+  return getRuleValue(fantasyRules.starting_lineup.allowed_formations) || [];
+}
+
+function getBudgetLimit() {
+  return getRuleValue(fantasyRules.budget.initial_budget);
+}
+
+function getCurrencyLabel() {
+  return fantasyRules.budget.initial_budget.currency_label || fantasyRules.budget.initial_budget.display || "million dollars";
+}
+
+function getGroupStageCountryLimit() {
+  return fantasyRules.nation_limits.by_round.group_stage.max_players_per_nation;
+}
+
+function isCaptainRequired() {
+  const value = getRuleValue(fantasyRules.captain.captain_required);
+  return value === true || value === "needs_check";
+}
+
+function getCaptainMultiplierLabel() {
+  return getRuleValue(fantasyRules.captain.captain_points_multiplier);
+}
+
+// Official FIFA Fantasy data is the normal recommendation pool.
+function isOfficialFantasyPlayer(player) {
+  return player.roster_status === "official_fantasy_pool";
+}
+
+function getPlayerId(player) {
+  return player.player_id || player.fifa_fantasy_id || player.id;
+}
+
+function getPlayerPosition(player) {
+  return player.official_fantasy_position || player.position;
+}
+
+function getPlayerPrice(player) {
+  if (player.official_price !== null && player.official_price !== undefined) {
+    return Number(player.official_price);
+  }
+
+  return Number(player.price || 0);
+}
+
+function getPlayerClub(player) {
+  return player.club || "club needs check";
+}
+
+function getPlayerReason(player) {
+  if (player.short_reason) return player.short_reason;
+
+  if (player.recommendation_status === "eligible") {
+    return "Eligible for normal recommendations because official fantasy data and useful support data are available.";
+  }
+
+  if (player.recommendation_status === "caution") {
+    return "Can be recommended, but some supporting club or national team data is incomplete.";
+  }
+
+  if (player.recommendation_status === "limited") {
+    return "Only use this player for underdog, chaos, or country-specific teams because data is limited.";
+  }
+
+  return "Avoid normal recommendations unless there are not enough official-pool players.";
+}
+
+function getOfficialPlayerPool(players) {
+  return players.filter((player) => {
+    return isOfficialFantasyPlayer(player)
+      && getPlayerPosition(player)
+      && getPlayerPrice(player) > 0;
+  });
+}
+
 // Build a 15-player squad using the position rules from fantasyRules.json
 function buildFantasySquad(players) {
   const choices = getUserChoices();
-  const positionRules = fantasyRules.squad.positions;
-  const budget = fantasyRules.budget.initial_budget;
+  const officialPlayers = getOfficialPlayerPool(players);
+  const positionRules = getPositionRules();
+  const budget = getBudgetLimit();
   const squad = [];
   const countryCounts = {};
 
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Goalkeeper"), positionRules.GK, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Defender"), positionRules.DEF, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Midfielder"), positionRules.MID, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Forward"), positionRules.FWD, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "GK"), positionRules.GK, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "DEF"), positionRules.DEF, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "MID"), positionRules.MID, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "FWD"), positionRules.FWD, choices, budget);
 
   return squad;
 }
 
 // Find players by the website's position names
 function getPlayersByPosition(players, position) {
-  return players.filter((player) => player.position === position);
+  return players.filter((player) => getPlayerPosition(player) === position);
 }
 
 // Pick strong players while trying to stay under the total budget
@@ -103,7 +211,7 @@ function addBudgetPicks(squad, countryCounts, candidates, amount, choices, budge
     let pick = sortedCandidates.find((player) => {
       return !squad.includes(player)
         && canAddCountry(player, countryCounts)
-        && player.price <= averageBudgetPerSlot + 1.5;
+        && getPlayerPrice(player) <= averageBudgetPerSlot + 1.5;
     });
 
     if (!pick) {
@@ -122,7 +230,7 @@ function addBudgetPicks(squad, countryCounts, candidates, amount, choices, budge
 // Respect the group-stage country limit from fantasyRules.json
 function canAddCountry(player, countryCounts) {
   const country = player.country || "needs_check";
-  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+  const maxPerCountry = getGroupStageCountryLimit();
 
   return (countryCounts[country] || 0) < maxPerCountry;
 }
@@ -144,23 +252,24 @@ function getCountryCounts(squad) {
 
 // Validate the generated squad against fantasyRules.json
 function validateSquad(squad, startingTeam, captain, formation, budgetInfo, countryCounts) {
-  const positionRules = fantasyRules.squad.positions;
-  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+  const positionRules = getPositionRules();
+  const maxPerCountry = getGroupStageCountryLimit();
+  const allowedFormations = getAllowedFormations();
   const squadPositionCounts = {
-    GK: getPlayersByPosition(squad, "Goalkeeper").length,
-    DEF: getPlayersByPosition(squad, "Defender").length,
-    MID: getPlayersByPosition(squad, "Midfielder").length,
-    FWD: getPlayersByPosition(squad, "Forward").length
+    GK: getPlayersByPosition(squad, "GK").length,
+    DEF: getPlayersByPosition(squad, "DEF").length,
+    MID: getPlayersByPosition(squad, "MID").length,
+    FWD: getPlayersByPosition(squad, "FWD").length
   };
   const formationParts = formation.split("-").map((part) => Number(part));
   const countryLimitPassed = Object.values(countryCounts).every((count) => count <= maxPerCountry);
-  const captainInStarting11 = startingTeam.some((player) => player.id === captain.id);
+  const captainInStarting11 = captain ? startingTeam.some((player) => getPlayerId(player) === getPlayerId(captain)) : false;
 
   return [
     {
       label: "Squad size",
-      passed: squad.length === fantasyRules.squad.total_players,
-      message: `Squad has ${squad.length} players. It should have exactly ${fantasyRules.squad.total_players}.`
+      passed: squad.length === getSquadSizeRule(),
+      message: `Squad has ${squad.length} players. It should have exactly ${getSquadSizeRule()}.`
     },
     {
       label: "Positions",
@@ -182,21 +291,26 @@ function validateSquad(squad, startingTeam, captain, formation, budgetInfo, coun
     },
     {
       label: "Starting 11",
-      passed: startingTeam.length === fantasyRules.starting_lineup.total_players,
-      message: `Starting lineup has ${startingTeam.length} players. It should have exactly ${fantasyRules.starting_lineup.total_players}.`
+      passed: startingTeam.length === getStartingLineupSizeRule(),
+      message: `Starting lineup has ${startingTeam.length} players. It should have exactly ${getStartingLineupSizeRule()}.`
     },
     {
       label: "Formation",
-      passed: fantasyRules.starting_lineup.allowed_formations.includes(formation)
+      passed: allowedFormations.includes(formation)
         && formationParts[0] >= 3
         && formationParts[1] >= 2
         && formationParts[2] >= 1,
-      message: `${formation} must be in fantasyRules.json and include at least 3 DEF, 2 MID, and 1 FWD.`
+      message: `${formation} must be in data/fantasyRules.json and include at least 3 DEF, 2 MID, and 1 FWD.`
     },
     {
       label: "Captain",
-      passed: Boolean(captain) && captainInStarting11,
+      passed: !isCaptainRequired() || (Boolean(captain) && captainInStarting11),
       message: captain ? `${captain.name} is selected from the starting 11.` : "No captain was selected."
+    },
+    {
+      label: "Official player pool",
+      passed: squad.every(isOfficialFantasyPlayer),
+      message: "Normal recommendations only use players marked official_fantasy_pool."
     }
   ];
 }
@@ -218,13 +332,13 @@ function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formatio
 
   currentTeamExport = {
     site_name: "World Cup Fantasy Team Helper",
-    user_prompt: "Draft Week 5 fantasy squad generated from player data and prototype rules.",
+    user_prompt: "Week 6 squad generated from official FIFA Fantasy player data and official/needs-check FIFA Fantasy rules.",
     team_name: "Generated Fantasy Squad",
     formation: formationUsed,
     players: squad,
     starting_11: startingTeam,
     bench,
-    captain: captainPick.captain.name,
+    captain: captainPick.captain ? captainPick.captain.name : null,
     total_price: Number(budgetInfo.totalPrice.toFixed(1)),
     remaining_budget: Number(budgetInfo.remainingBudget.toFixed(1)),
     strategy: `${choices.teamStyle} team style with ${choices.riskStyle} risk style`,
@@ -234,18 +348,14 @@ function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formatio
     rule_checks: getRuleChecksObject(validationResults),
     explanation: captainPick.reason,
     data_sources: [
-      "players.json",
-      "dataSources.md",
-      "FPL-Core-Insights",
-      "transfermarktPlayers.csv"
+      "data/players.json",
+      "data/fifaFantasyPlayers.json",
+      "data/dataSources.md"
     ],
     rules_sources: [
-      "fantasyRules.json",
-      "rulesSources.md",
-      "FIFA World Cup 2022 fantasy",
-      "UEFA EURO 2024 fantasy",
-      "FIFA Club World Cup fantasy",
-      "Fantasy Premier League"
+      "data/fantasyRules.json",
+      "https://play.fifa.com/fantasy/",
+      "https://play.fifa.com/fantasy/help"
     ]
   };
 }
@@ -254,24 +364,30 @@ function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formatio
 function getAverageScore(players, field) {
   if (players.length === 0) return 0;
 
-  const total = players.reduce((sum, player) => sum + Number(player[field] || 0), 0);
+  const total = players.reduce((sum, player) => {
+    if (field === "attack_score") return sum + getPlayerAttackScore(player);
+    if (field === "defense_score") return sum + getPlayerDefenseScore(player);
+    if (field === "risk_score") return sum + getPlayerRiskScore(player);
+    return sum + Number(player[field] || 0);
+  }, 0);
+
   return total / players.length;
 }
 
 // Calculate the total price of a squad
 function getSquadTotalPrice(squad) {
-  return squad.reduce((total, player) => total + Number(player.price || 0), 0);
+  return squad.reduce((total, player) => total + getPlayerPrice(player), 0);
 }
 
 // Count how many squad slots are still empty
 function getRemainingSquadSlots(squad) {
-  return fantasyRules.squad.total_players - squad.length;
+  return getSquadSizeRule() - squad.length;
 }
 
 // Create simple budget information for display
 function getBudgetInfo(squad) {
   const totalPrice = getSquadTotalPrice(squad);
-  const budget = fantasyRules.budget.initial_budget;
+  const budget = getBudgetLimit();
 
   return {
     totalPrice,
@@ -288,16 +404,16 @@ function buildStartingTeam(squad) {
   const choices = getUserChoices();
 
   return [
-    ...pickBestPlayers(getPlayersByPosition(squad, "Goalkeeper"), 1, choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "Defender"), parts[0], choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "Midfielder"), parts[1], choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "Forward"), parts[2], choices)
+    ...pickBestPlayers(getPlayersByPosition(squad, "GK"), 1, choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "DEF"), parts[0], choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "MID"), parts[1], choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "FWD"), parts[2], choices)
   ];
 }
 
 // Use one allowed formation from fantasyRules.json for the generated XI
 function getGeneratedFormation() {
-  const allowedFormations = fantasyRules.starting_lineup.allowed_formations;
+  const allowedFormations = getAllowedFormations();
 
   if (allowedFormations.includes(formationSelect.value)) {
     return formationSelect.value;
@@ -308,9 +424,9 @@ function getGeneratedFormation() {
 
 // The bench is the rest of the 15-player squad after the starting 11
 function buildBench(squad, startingTeam) {
-  const starterIds = startingTeam.map((player) => player.id);
+  const starterIds = startingTeam.map((player) => getPlayerId(player));
 
-  return squad.filter((player) => !starterIds.includes(player.id));
+  return squad.filter((player) => !starterIds.includes(getPlayerId(player)));
 }
 
 // Choose a captain from the starting 11 using simple style-based logic
@@ -321,6 +437,13 @@ function chooseCaptain(startingTeam) {
   const captain = startingTeam
     .slice()
     .sort((a, b) => captainScore(b, choices) - captainScore(a, choices))[0];
+
+  if (!captain) {
+    return {
+      captain: null,
+      reason: "No captain could be selected because the starting 11 is incomplete."
+    };
+  }
 
   if (choices.teamStyle === "attacking") {
     reason = "Chosen because attacking teams prefer the highest attack score from the starting 11.";
@@ -335,15 +458,19 @@ function chooseCaptain(startingTeam) {
 
 // Score captain options based on the user's selected style
 function captainScore(player, choices) {
+  const attack = getPlayerAttackScore(player);
+  const defense = getPlayerDefenseScore(player);
+  const risk = getPlayerRiskScore(player);
+
   if (choices.teamStyle === "attacking") {
-    return player.attack_score * 2 - player.risk_score;
+    return attack * 2 - risk;
   }
 
   if (choices.riskStyle === "safe") {
-    return player.attack_score + player.defense_score - player.risk_score * 2;
+    return attack + defense - risk * 2;
   }
 
-  return player.attack_score + player.defense_score - player.risk_score;
+  return attack + defense - risk;
 }
 
 // Read the choices from the form controls
@@ -366,22 +493,25 @@ function pickBestPlayers(players, amount, choices = getUserChoices()) {
 // Score a player based on the user's choices
 function playerScore(player, choices) {
   let score = 0;
+  const attack = getPlayerAttackScore(player);
+  const defense = getPlayerDefenseScore(player);
+  const risk = getPlayerRiskScore(player);
 
   if (choices.teamStyle === "attacking") {
-    score += player.attack_score * 2;
-    score += player.defense_score;
+    score += attack * 2;
+    score += defense;
   } else if (choices.teamStyle === "defensive") {
-    score += player.defense_score * 2;
-    score += player.attack_score;
+    score += defense * 2;
+    score += attack;
   } else {
-    score += player.attack_score;
-    score += player.defense_score;
+    score += attack;
+    score += defense;
   }
 
   if (choices.riskStyle === "safe") {
-    score -= player.risk_score * 1.5;
+    score -= risk * 1.5;
   } else {
-    score -= player.risk_score * 0.5;
+    score -= risk * 0.5;
   }
 
   if (choices.favoriteCountry && String(player.country).toLowerCase() === choices.favoriteCountry) {
@@ -389,6 +519,32 @@ function playerScore(player, choices) {
   }
 
   return score;
+}
+
+// Week 6 official players do not always have prototype scores, so use data quality as fallback.
+function getQualityScore(value) {
+  if (value === "high") return 85;
+  if (value === "medium") return 70;
+  if (value === "low") return 45;
+  return 30;
+}
+
+function getPlayerAttackScore(player) {
+  if (player.attack_score !== undefined) return Number(player.attack_score);
+  return getQualityScore(player.national_team_data_quality);
+}
+
+function getPlayerDefenseScore(player) {
+  if (player.defense_score !== undefined) return Number(player.defense_score);
+  return getQualityScore(player.data_quality);
+}
+
+function getPlayerRiskScore(player) {
+  if (player.risk_score !== undefined) return Number(player.risk_score);
+  if (player.recommendation_status === "eligible") return 15;
+  if (player.recommendation_status === "caution") return 35;
+  if (player.recommendation_status === "limited") return 60;
+  return 80;
 }
 
 // Fill country filter dropdowns from the loaded player data
@@ -413,7 +569,7 @@ function setupCountryFilters(players) {
 function setupFormationOptions() {
   formationSelect.innerHTML = "";
 
-  fantasyRules.starting_lineup.allowed_formations.forEach((formation) => {
+  getAllowedFormations().forEach((formation) => {
     const option = document.createElement("option");
     option.value = formation;
     option.textContent = formation;
@@ -429,8 +585,8 @@ function filterPlayers(players, filters) {
     const maxPrice = Number(filters.maxPrice);
 
     if (filters.country && player.country !== filters.country) return false;
-    if (filters.position && player.position !== filters.position) return false;
-    if (filters.maxPrice && player.price > maxPrice) return false;
+    if (filters.position && getPlayerPosition(player) !== filters.position) return false;
+    if (filters.maxPrice && getPlayerPrice(player) > maxPrice) return false;
 
     return true;
   });
@@ -465,7 +621,7 @@ function showSuggestions(players) {
     position: picksPositionFilter.value,
     maxPrice: picksMaxPriceFilter.value
   });
-  const playerPicks = pickBestPlayers(filteredPlayers, 15, choices);
+  const playerPicks = pickBestPlayers(getOfficialPlayerPool(filteredPlayers), 15, choices);
 
   container.innerHTML = "";
 
@@ -478,11 +634,12 @@ function showSuggestions(players) {
       <div>
         <h3>${player.name}</h3>
         <p><strong>Country:</strong> ${player.country}</p>
-        <p><strong>Team:</strong> ${player.club}</p>
-        <p><strong>Position:</strong> ${player.position}</p>
-        <p><strong>Price:</strong> ${player.price}</p>
+        <p><strong>Club:</strong> ${getPlayerClub(player)}</p>
+        <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
+        <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
+        <p><strong>Status:</strong> ${player.recommendation_status}</p>
         <p><strong>Choice score:</strong> ${Math.round(playerScore(player, choices))}</p>
-        <p class="advice-reason">${player.short_reason}</p>
+        <p class="advice-reason">${getPlayerReason(player)}</p>
       </div>
     `;
 
@@ -493,11 +650,11 @@ function showSuggestions(players) {
 // Build the captain tab from the best attacking players
 function showCaptains(players) {
   const choices = getUserChoices();
-  const captainPlayers = players
+  const captainPlayers = getOfficialPlayerPool(players)
     .slice()
     .sort((a, b) => {
-      const bScore = b.attack_score * 2 - b.risk_score;
-      const aScore = a.attack_score * 2 - a.risk_score;
+      const bScore = captainScore(b, choices);
+      const aScore = captainScore(a, choices);
       return bScore - aScore;
     })
     .slice(0, 6);
@@ -508,25 +665,24 @@ function showCaptains(players) {
   captainPlayers.forEach((player, index) => {
     const card = document.createElement("article");
     card.className = "captain-card";
-    const captainScore = player.attack_score * 2 - player.risk_score;
+    const captainScoreValue = Math.round(captainScore(player, choices));
 
     card.innerHTML = `
       <div class="captain-top">
         <p class="card-label">${index === 0 ? "Best Captain" : "Captain Option"}</p>
-        <p class="captain-score">Captain score: ${captainScore}</p>
+        <p class="captain-score">Captain score: ${captainScoreValue}</p>
       </div>
       <h3>${player.name}</h3>
       <div class="captain-data">
         <p><strong>Country:</strong> ${player.country}</p>
-        <p><strong>Team:</strong> ${player.club}</p>
-        <p><strong>Position:</strong> ${player.position}</p>
-        <p><strong>Price:</strong> ${player.price}</p>
-        <p><strong>Attack:</strong> ${player.attack_score}</p>
-        <p><strong>Defense:</strong> ${player.defense_score}</p>
-        <p><strong>Risk:</strong> ${player.risk_score}</p>
-        <p><strong>Team Elo:</strong> ${player.team_elo || "needs_check"}</p>
+        <p><strong>Club:</strong> ${getPlayerClub(player)}</p>
+        <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
+        <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
+        <p><strong>Data quality:</strong> ${player.data_quality}</p>
+        <p><strong>Club data:</strong> ${player.club_data_quality}</p>
+        <p><strong>National data:</strong> ${player.national_team_data_quality}</p>
       </div>
-      <p class="captain-reason">${player.short_reason}</p>
+      <p class="captain-reason">${getPlayerReason(player)}</p>
       <p class="captain-note">${player.data_note}</p>
     `;
 
@@ -553,7 +709,7 @@ function showTeam(players) {
   const fullSquadList = document.querySelector("#fullSquadList");
   const budgetInfo = getBudgetInfo(squad);
   const countryCounts = getCountryCounts(squad);
-  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+  const maxPerCountry = getGroupStageCountryLimit();
   const validationResults = validateSquad(squad, team, captainPick.captain, formationUsed, budgetInfo, countryCounts);
   saveCurrentTeamExport(squad, team, bench, captainPick, formationUsed, budgetInfo, validationResults);
 
@@ -565,13 +721,13 @@ function showTeam(players) {
 
   budgetSummary.innerHTML = `
     <div>
-      <strong>Total price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Total price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${getCurrencyLabel()}
     </div>
     <div>
-      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${getCurrencyLabel()}
     </div>
     <div>
-      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${getCurrencyLabel()}
     </div>
   `;
 
@@ -603,13 +759,13 @@ function showTeam(players) {
 
   formationSummary.innerHTML = `
     <strong>Formation used:</strong> ${formationUsed}
-    <span>Built from the allowed formations in fantasyRules.json.</span>
+    <span>Built from the allowed formations in data/fantasyRules.json.</span>
   `;
 
   captainSummary.innerHTML = `
-    <strong>Captain:</strong> ${captainPick.captain.name}
+    <strong>Captain:</strong> ${captainPick.captain ? captainPick.captain.name : "No valid captain"}
     <span>${captainPick.reason}</span>
-    <span>Captain multiplier: ${fantasyRules.captain.captain_points_multiplier}x points.</span>
+    <span>Captain multiplier: ${getCaptainMultiplierLabel()}.</span>
   `;
 
   squad.forEach((player, index) => {
@@ -617,29 +773,28 @@ function showTeam(players) {
     item.className = "squad-list-item";
     item.innerHTML = `
       <strong>#${index + 1} ${player.name}</strong>
-      <span>${player.country} | ${player.club} | ${player.position} | ${player.price}</span>
+      <span>${player.country} | ${getPlayerClub(player)} | ${getPlayerPosition(player)} | ${getPlayerPrice(player)}</span>
     `;
     fullSquadList.appendChild(item);
   });
 
   team.forEach((player, index) => {
-    const line = document.querySelector(`#${getLineId(player.position)}`);
+    const line = document.querySelector(`#${getLineId(getPlayerPosition(player))}`);
     const token = document.createElement("div");
     token.className = "player-token";
-    const isCaptain = player.id === captainPick.captain.id;
+    const isCaptain = captainPick.captain && getPlayerId(player) === getPlayerId(captainPick.captain);
 
     token.innerHTML = `
       <div class="shirt">${isCaptain ? "C" : index + 1}</div>
       <p class="token-name">${player.name}</p>
-      <p class="token-position">${player.position}${isCaptain ? " | Captain" : ""}</p>
+      <p class="token-position">${getPlayerPosition(player)}${isCaptain ? " | Captain" : ""}</p>
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
-        <p><strong>Club:</strong> ${player.club}</p>
-        <p><strong>Price:</strong> ${player.price}</p>
-        <p><strong>Attack:</strong> ${player.attack_score}</p>
-        <p><strong>Defense:</strong> ${player.defense_score}</p>
-        <p><strong>Risk:</strong> ${player.risk_score}</p>
-        <p class="reason">${player.short_reason}</p>
+        <p><strong>Club:</strong> ${getPlayerClub(player)}</p>
+        <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
+        <p><strong>Data quality:</strong> ${player.data_quality}</p>
+        <p><strong>Status:</strong> ${player.recommendation_status}</p>
+        <p class="reason">${getPlayerReason(player)}</p>
         <p class="data-note">${player.data_note}</p>
       </div>
     `;
@@ -660,11 +815,11 @@ function createSimplePlayerToken(player, number) {
   token.innerHTML = `
     <div class="shirt">${number}</div>
     <p class="token-name">${player.name}</p>
-    <p class="token-position">${player.position}</p>
+    <p class="token-position">${getPlayerPosition(player)}</p>
     <div class="player-details">
       <p><strong>Country:</strong> ${player.country}</p>
-      <p><strong>Club:</strong> ${player.club}</p>
-      <p><strong>Price:</strong> ${player.price}</p>
+      <p><strong>Club:</strong> ${getPlayerClub(player)}</p>
+      <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
     </div>
   `;
 
@@ -673,9 +828,9 @@ function createSimplePlayerToken(player, number) {
 
 // Match positions to the correct pitch row
 function getLineId(position) {
-  if (position === "Goalkeeper") return "keeperLine";
-  if (position === "Defender") return "defenseLine";
-  if (position === "Midfielder") return "midfieldLine";
+  if (position === "GK") return "keeperLine";
+  if (position === "DEF") return "defenseLine";
+  if (position === "MID") return "midfieldLine";
   return "forwardLine";
 }
 
@@ -683,11 +838,11 @@ function getLineId(position) {
 function showOutlook(players) {
   const countries = [];
 
-  players.forEach((player) => {
+  getOfficialPlayerPool(players).forEach((player) => {
     if (!player.country || player.country === "needs_check") return;
 
     const existingCountry = countries.find((country) => country.name === player.country);
-    const score = player.attack_score + player.defense_score - player.risk_score;
+    const score = getPlayerAttackScore(player) + getPlayerDefenseScore(player) - getPlayerRiskScore(player);
 
     if (existingCountry) {
       existingCountry.playerCount++;
@@ -721,15 +876,15 @@ function showOutlook(players) {
 // Build the watchlist from cheaper players with useful prototype scores
 function showWatchlist(players) {
   const choices = getUserChoices();
-  const watchlist = players
-    .filter((player) => player.price <= 7.5)
+  const watchlist = getOfficialPlayerPool(players)
+    .filter((player) => getPlayerPrice(player) <= 8.5)
     .sort((a, b) => playerScore(b, choices) - playerScore(a, choices))
     .slice(0, 6)
     .map((player) => ({
       label: "Watchlist",
       title: player.name,
-      text: `${player.club} ${player.position}. A lower-price option to watch before making transfers.`,
-      rating: `Price: ${player.price}`
+      text: `${getPlayerClub(player)} ${getPlayerPosition(player)}. A lower-price official-pool option to watch before making transfers.`,
+      rating: `Official price: ${getPlayerPrice(player)}`
     }));
 
   showCards(watchlist, "watchlistList");
@@ -746,13 +901,14 @@ function showPlayerPool(players) {
     position: poolPositionFilter.value,
     maxPrice: poolMaxPriceFilter.value
   })
+    .filter(isOfficialFantasyPlayer)
     .filter((player) => {
-      const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
+      const text = `${player.name} ${getPlayerClub(player)} ${getPlayerPosition(player)}`.toLowerCase();
       return text.includes(searchText);
     })
     .sort((a, b) => sortPlayers(a, b, sortBy));
 
-  count.textContent = `Showing ${filteredPlayers.length} of ${players.length} sourced players`;
+  count.textContent = `Showing ${filteredPlayers.length} of ${getOfficialPlayerPool(players).length} official FIFA Fantasy players`;
   container.innerHTML = "";
 
   filteredPlayers.forEach((player) => {
@@ -761,8 +917,8 @@ function showPlayerPool(players) {
 
     card.innerHTML = `
       <h3>${player.name}</h3>
-      <p>${player.club} | ${player.position}</p>
-      <p>Price: ${player.price} | Attack: ${player.attack_score} | Defense: ${player.defense_score} | Risk: ${player.risk_score}</p>
+      <p>${getPlayerClub(player)} | ${getPlayerPosition(player)} | ${player.recommendation_status}</p>
+      <p>Official price: ${getPlayerPrice(player)} | Data: ${player.data_quality} | Club: ${player.club_data_quality} | National: ${player.national_team_data_quality}</p>
     `;
 
     container.appendChild(card);
@@ -771,13 +927,13 @@ function showPlayerPool(players) {
 
 // Sort the player pool using the user's selected option
 function sortPlayers(a, b, sortBy) {
-  if (sortBy === "priceLow") return a.price - b.price;
-  if (sortBy === "priceHigh") return b.price - a.price;
-  if (sortBy === "club") return a.club.localeCompare(b.club);
-  if (sortBy === "position") return a.position.localeCompare(b.position);
-  if (sortBy === "attack") return b.attack_score - a.attack_score;
-  if (sortBy === "defense") return b.defense_score - a.defense_score;
-  if (sortBy === "risk") return a.risk_score - b.risk_score;
+  if (sortBy === "priceLow") return getPlayerPrice(a) - getPlayerPrice(b);
+  if (sortBy === "priceHigh") return getPlayerPrice(b) - getPlayerPrice(a);
+  if (sortBy === "club") return getPlayerClub(a).localeCompare(getPlayerClub(b));
+  if (sortBy === "position") return getPlayerPosition(a).localeCompare(getPlayerPosition(b));
+  if (sortBy === "attack") return getPlayerAttackScore(b) - getPlayerAttackScore(a);
+  if (sortBy === "defense") return getPlayerDefenseScore(b) - getPlayerDefenseScore(a);
+  if (sortBy === "risk") return getPlayerRiskScore(a) - getPlayerRiskScore(b);
 
   return playerScore(b, getUserChoices()) - playerScore(a, getUserChoices());
 }
@@ -821,29 +977,29 @@ function getFormationPositions() {
   const parts = formation.split("-").map((part) => Number(part));
 
   return [
-    { label: "Goalkeeper", position: "Goalkeeper", count: 1 },
-    { label: "Defender", position: "Defender", count: parts[0] },
-    { label: "Midfielder", position: "Midfielder", count: parts[1] },
-    { label: "Forward", position: "Forward", count: parts[2] }
+    { label: "Goalkeeper", position: "GK", count: 1 },
+    { label: "Defender", position: "DEF", count: parts[0] },
+    { label: "Midfielder", position: "MID", count: parts[1] },
+    { label: "Forward", position: "FWD", count: parts[2] }
   ];
 }
 
 // Build bench labels from the 15-player squad rules and chosen formation
 function getBenchPositions() {
-  const squadRules = fantasyRules.squad.positions;
+  const squadRules = getPositionRules();
   const startingPositions = getFormationPositions();
   const startingCounts = {
-    Goalkeeper: 1,
-    Defender: startingPositions.find((group) => group.position === "Defender").count,
-    Midfielder: startingPositions.find((group) => group.position === "Midfielder").count,
-    Forward: startingPositions.find((group) => group.position === "Forward").count
+    GK: 1,
+    DEF: startingPositions.find((group) => group.position === "DEF").count,
+    MID: startingPositions.find((group) => group.position === "MID").count,
+    FWD: startingPositions.find((group) => group.position === "FWD").count
   };
 
   return [
-    { label: "Goalkeeper", position: "Goalkeeper", count: squadRules.GK - startingCounts.Goalkeeper },
-    { label: "Defender", position: "Defender", count: squadRules.DEF - startingCounts.Defender },
-    { label: "Midfielder", position: "Midfielder", count: squadRules.MID - startingCounts.Midfielder },
-    { label: "Forward", position: "Forward", count: squadRules.FWD - startingCounts.Forward }
+    { label: "Goalkeeper", position: "GK", count: squadRules.GK - startingCounts.GK },
+    { label: "Defender", position: "DEF", count: squadRules.DEF - startingCounts.DEF },
+    { label: "Midfielder", position: "MID", count: squadRules.MID - startingCounts.MID },
+    { label: "Forward", position: "FWD", count: squadRules.FWD - startingCounts.FWD }
   ].filter((group) => group.count > 0);
 }
 
@@ -851,7 +1007,7 @@ function getBenchPositions() {
 function renderCustomSlots(players) {
   const customBudgetSummary = document.querySelector("#customBudgetSummary");
   const selectedPlayers = customSlots
-    .map((slot) => players.find((item) => item.id === slot.playerId))
+    .map((slot) => players.find((item) => getPlayerId(item) === slot.playerId))
     .filter(Boolean);
   const budgetInfo = getBudgetInfo(selectedPlayers);
 
@@ -862,13 +1018,13 @@ function renderCustomSlots(players) {
   document.querySelector("#benchList").innerHTML = "";
   customBudgetSummary.innerHTML = `
     <div>
-      <strong>Selected price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Selected price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${getCurrencyLabel()}
     </div>
     <div>
-      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${getCurrencyLabel()}
     </div>
     <div>
-      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${fantasyRules.budget.currency_label}
+      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${getCurrencyLabel()}
     </div>
   `;
   customBudgetSummary.classList.toggle("warning", budgetInfo.isOverBudget);
@@ -878,7 +1034,7 @@ function renderCustomSlots(players) {
   }
 
   customSlots.forEach((slot, index) => {
-    const player = players.find((item) => item.id === slot.playerId);
+    const player = players.find((item) => getPlayerId(item) === slot.playerId);
     const token = createSlotToken(slot, player, index + 1);
     const line = slot.isBench
       ? document.querySelector("#benchList")
@@ -890,9 +1046,9 @@ function renderCustomSlots(players) {
 
 // Match custom player positions to the correct custom pitch row
 function getCustomLineId(position) {
-  if (position === "Goalkeeper") return "customKeeperLine";
-  if (position === "Defender") return "customDefenseLine";
-  if (position === "Midfielder") return "customMidfieldLine";
+  if (position === "GK") return "customKeeperLine";
+  if (position === "DEF") return "customDefenseLine";
+  if (position === "MID") return "customMidfieldLine";
   return "customForwardLine";
 }
 
@@ -906,14 +1062,12 @@ function createSlotToken(slot, player, number) {
     token.innerHTML = `
       <div class="shirt">${number}</div>
       <p class="token-name">${player.name}</p>
-      <p class="token-position">${player.position}</p>
+      <p class="token-position">${getPlayerPosition(player)}</p>
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
-        <p><strong>Club:</strong> ${player.club}</p>
-        <p><strong>Price:</strong> ${player.price}</p>
-        <p><strong>Attack:</strong> ${player.attack_score}</p>
-        <p><strong>Defense:</strong> ${player.defense_score}</p>
-        <p><strong>Risk:</strong> ${player.risk_score}</p>
+        <p><strong>Club:</strong> ${getPlayerClub(player)}</p>
+        <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
+        <p><strong>Status:</strong> ${player.recommendation_status}</p>
       </div>
     `;
   } else {
@@ -922,7 +1076,7 @@ function createSlotToken(slot, player, number) {
       <p class="token-name">${slot.label}</p>
       <p class="token-position">${slot.position}</p>
       <div class="player-details">
-        <p>Click to choose a ${slot.position.toLowerCase()}.</p>
+        <p>Click to choose a ${getPositionLabel(slot.position).toLowerCase()}.</p>
       </div>
     `;
   }
@@ -954,14 +1108,14 @@ function renderPlayerSelection(players) {
   title.textContent = `Choose ${slot.label}`;
   container.innerHTML = "";
 
-  filterPlayers(players, {
+  filterPlayers(getOfficialPlayerPool(players), {
     country: customCountryFilter.value,
     position: slot.position,
     maxPrice: customMaxPriceFilter.value
   })
-    .filter((player) => !selectedIds.includes(player.id))
+    .filter((player) => !selectedIds.includes(getPlayerId(player)))
     .filter((player) => {
-      const text = `${player.name} ${player.club} ${player.position}`.toLowerCase();
+      const text = `${player.name} ${getPlayerClub(player)} ${getPlayerPosition(player)}`.toLowerCase();
       return text.includes(searchText);
     })
     .sort((a, b) => sortPlayers(a, b, sortBy))
@@ -972,12 +1126,12 @@ function renderPlayerSelection(players) {
 
       card.innerHTML = `
         <h3>${player.name}</h3>
-        <p>${player.club} | ${player.position}</p>
-        <p>Price: ${player.price} | Attack: ${player.attack_score} | Defense: ${player.defense_score} | Risk: ${player.risk_score}</p>
+        <p>${getPlayerClub(player)} | ${getPlayerPosition(player)} | ${player.recommendation_status}</p>
+        <p>Official price: ${getPlayerPrice(player)} | Data: ${player.data_quality}</p>
       `;
 
       card.addEventListener("click", () => {
-        slot.playerId = player.id;
+        slot.playerId = getPlayerId(player);
         renderCustomSlots(allPlayers);
         customSelectionPanel.classList.add("hidden");
       });
