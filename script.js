@@ -22,11 +22,14 @@ const customMaxPriceFilter = document.querySelector("#customMaxPriceFilter");
 const heroSlides = document.querySelectorAll(".hero-slide");
 const heroDots = document.querySelectorAll(".hero-dot");
 const filterToggleButtons = document.querySelectorAll(".filter-toggle");
+const exportTeamButton = document.querySelector("#exportTeamButton");
 
 let allPlayers = [];
+let fantasyRules = null;
 let customSlots = [];
 let activeSlotId = null;
 let activeHeroSlide = 0;
+let currentTeamExport = null;
 
 // Rotate the homepage poster every 5 seconds
 function showHeroSlide(index) {
@@ -53,20 +56,294 @@ async function loadPlayerData() {
   return response.json();
 }
 
-// Pick a simple 4-3-3 team from the player database
-function buildStartingTeam(players) {
+// Load the draft fantasy rules from fantasyRules.json
+async function loadFantasyRules() {
+  const response = await fetch("fantasyRules.json");
+
+  if (!response.ok) {
+    throw new Error("Could not load fantasyRules.json");
+  }
+
+  return response.json();
+}
+
+// Build a 15-player squad using the position rules from fantasyRules.json
+function buildFantasySquad(players) {
   const choices = getUserChoices();
-  const goalkeepers = players.filter((player) => player.position === "Goalkeeper");
-  const defenders = players.filter((player) => player.position === "Defender");
-  const midfielders = players.filter((player) => player.position === "Midfielder");
-  const forwards = players.filter((player) => player.position === "Forward");
+  const positionRules = fantasyRules.squad.positions;
+  const budget = fantasyRules.budget.initial_budget;
+  const squad = [];
+  const countryCounts = {};
+
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Goalkeeper"), positionRules.GK, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Defender"), positionRules.DEF, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Midfielder"), positionRules.MID, choices, budget);
+  addBudgetPicks(squad, countryCounts, getPlayersByPosition(players, "Forward"), positionRules.FWD, choices, budget);
+
+  return squad;
+}
+
+// Find players by the website's position names
+function getPlayersByPosition(players, position) {
+  return players.filter((player) => player.position === position);
+}
+
+// Pick strong players while trying to stay under the total budget
+function addBudgetPicks(squad, countryCounts, candidates, amount, choices, budget) {
+  const sortedCandidates = candidates
+    .slice()
+    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices));
+
+  for (let i = 0; i < amount; i++) {
+    const currentTotal = getSquadTotalPrice(squad);
+    const remainingSlots = getRemainingSquadSlots(squad);
+    const remainingBudget = budget - currentTotal;
+    const averageBudgetPerSlot = remainingBudget / remainingSlots;
+
+    let pick = sortedCandidates.find((player) => {
+      return !squad.includes(player)
+        && canAddCountry(player, countryCounts)
+        && player.price <= averageBudgetPerSlot + 1.5;
+    });
+
+    if (!pick) {
+      pick = sortedCandidates.find((player) => {
+        return !squad.includes(player) && canAddCountry(player, countryCounts);
+      });
+    }
+
+    if (pick) {
+      squad.push(pick);
+      addCountryCount(pick, countryCounts);
+    }
+  }
+}
+
+// Respect the group-stage country limit from fantasyRules.json
+function canAddCountry(player, countryCounts) {
+  const country = player.country || "needs_check";
+  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+
+  return (countryCounts[country] || 0) < maxPerCountry;
+}
+
+// Track how many selected players come from each country
+function addCountryCount(player, countryCounts) {
+  const country = player.country || "needs_check";
+  countryCounts[country] = (countryCounts[country] || 0) + 1;
+}
+
+// Count selected players by country for display
+function getCountryCounts(squad) {
+  return squad.reduce((counts, player) => {
+    const country = player.country || "needs_check";
+    counts[country] = (counts[country] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+// Validate the generated squad against fantasyRules.json
+function validateSquad(squad, startingTeam, captain, formation, budgetInfo, countryCounts) {
+  const positionRules = fantasyRules.squad.positions;
+  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+  const squadPositionCounts = {
+    GK: getPlayersByPosition(squad, "Goalkeeper").length,
+    DEF: getPlayersByPosition(squad, "Defender").length,
+    MID: getPlayersByPosition(squad, "Midfielder").length,
+    FWD: getPlayersByPosition(squad, "Forward").length
+  };
+  const formationParts = formation.split("-").map((part) => Number(part));
+  const countryLimitPassed = Object.values(countryCounts).every((count) => count <= maxPerCountry);
+  const captainInStarting11 = startingTeam.some((player) => player.id === captain.id);
 
   return [
-    ...pickBestPlayers(goalkeepers, 1, choices),
-    ...pickBestPlayers(defenders, 4, choices),
-    ...pickBestPlayers(midfielders, 3, choices),
-    ...pickBestPlayers(forwards, 3, choices)
+    {
+      label: "Squad size",
+      passed: squad.length === fantasyRules.squad.total_players,
+      message: `Squad has ${squad.length} players. It should have exactly ${fantasyRules.squad.total_players}.`
+    },
+    {
+      label: "Positions",
+      passed: squadPositionCounts.GK === positionRules.GK
+        && squadPositionCounts.DEF === positionRules.DEF
+        && squadPositionCounts.MID === positionRules.MID
+        && squadPositionCounts.FWD === positionRules.FWD,
+      message: `Current positions: ${squadPositionCounts.GK} GK, ${squadPositionCounts.DEF} DEF, ${squadPositionCounts.MID} MID, ${squadPositionCounts.FWD} FWD.`
+    },
+    {
+      label: "Budget",
+      passed: budgetInfo.totalPrice <= budgetInfo.budget,
+      message: `Total price is ${budgetInfo.totalPrice.toFixed(1)}. Budget limit is ${budgetInfo.budget.toFixed(1)}.`
+    },
+    {
+      label: "Country limit",
+      passed: countryLimitPassed,
+      message: `No country should have more than ${maxPerCountry} players. Players marked needs_check are treated as one cautious group.`
+    },
+    {
+      label: "Starting 11",
+      passed: startingTeam.length === fantasyRules.starting_lineup.total_players,
+      message: `Starting lineup has ${startingTeam.length} players. It should have exactly ${fantasyRules.starting_lineup.total_players}.`
+    },
+    {
+      label: "Formation",
+      passed: fantasyRules.starting_lineup.allowed_formations.includes(formation)
+        && formationParts[0] >= 3
+        && formationParts[1] >= 2
+        && formationParts[2] >= 1,
+      message: `${formation} must be in fantasyRules.json and include at least 3 DEF, 2 MID, and 1 FWD.`
+    },
+    {
+      label: "Captain",
+      passed: Boolean(captain) && captainInStarting11,
+      message: captain ? `${captain.name} is selected from the starting 11.` : "No captain was selected."
+    }
   ];
+}
+
+// Turn validation results into an export-friendly object
+function getRuleChecksObject(validationResults) {
+  return validationResults.reduce((checks, result) => {
+    checks[result.label] = {
+      status: result.passed ? "PASS" : "FAIL",
+      explanation: result.message
+    };
+    return checks;
+  }, {});
+}
+
+// Keep the latest generated team ready for export
+function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formationUsed, budgetInfo, validationResults) {
+  const choices = getUserChoices();
+
+  currentTeamExport = {
+    site_name: "World Cup Fantasy Team Helper",
+    user_prompt: "Draft Week 5 fantasy squad generated from player data and prototype rules.",
+    team_name: "Generated Fantasy Squad",
+    formation: formationUsed,
+    players: squad,
+    starting_11: startingTeam,
+    bench,
+    captain: captainPick.captain.name,
+    total_price: Number(budgetInfo.totalPrice.toFixed(1)),
+    remaining_budget: Number(budgetInfo.remainingBudget.toFixed(1)),
+    strategy: `${choices.teamStyle} team style with ${choices.riskStyle} risk style`,
+    risk_score: Math.round(getAverageScore(squad, "risk_score")),
+    attack_score: Math.round(getAverageScore(squad, "attack_score")),
+    defense_score: Math.round(getAverageScore(squad, "defense_score")),
+    rule_checks: getRuleChecksObject(validationResults),
+    explanation: captainPick.reason,
+    data_sources: [
+      "players.json",
+      "dataSources.md",
+      "FPL-Core-Insights",
+      "transfermarktPlayers.csv"
+    ],
+    rules_sources: [
+      "fantasyRules.json",
+      "rulesSources.md",
+      "FIFA World Cup 2022 fantasy",
+      "UEFA EURO 2024 fantasy",
+      "FIFA Club World Cup fantasy",
+      "Fantasy Premier League"
+    ]
+  };
+}
+
+// Average one numeric field across the squad
+function getAverageScore(players, field) {
+  if (players.length === 0) return 0;
+
+  const total = players.reduce((sum, player) => sum + Number(player[field] || 0), 0);
+  return total / players.length;
+}
+
+// Calculate the total price of a squad
+function getSquadTotalPrice(squad) {
+  return squad.reduce((total, player) => total + Number(player.price || 0), 0);
+}
+
+// Count how many squad slots are still empty
+function getRemainingSquadSlots(squad) {
+  return fantasyRules.squad.total_players - squad.length;
+}
+
+// Create simple budget information for display
+function getBudgetInfo(squad) {
+  const totalPrice = getSquadTotalPrice(squad);
+  const budget = fantasyRules.budget.initial_budget;
+
+  return {
+    totalPrice,
+    budget,
+    remainingBudget: budget - totalPrice,
+    isOverBudget: totalPrice > budget
+  };
+}
+
+// Pick a valid starting 11 from the full 15-player squad
+function buildStartingTeam(squad) {
+  const formation = getGeneratedFormation();
+  const parts = formation.split("-").map((part) => Number(part));
+  const choices = getUserChoices();
+
+  return [
+    ...pickBestPlayers(getPlayersByPosition(squad, "Goalkeeper"), 1, choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "Defender"), parts[0], choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "Midfielder"), parts[1], choices),
+    ...pickBestPlayers(getPlayersByPosition(squad, "Forward"), parts[2], choices)
+  ];
+}
+
+// Use one allowed formation from fantasyRules.json for the generated XI
+function getGeneratedFormation() {
+  const allowedFormations = fantasyRules.starting_lineup.allowed_formations;
+
+  if (allowedFormations.includes(formationSelect.value)) {
+    return formationSelect.value;
+  }
+
+  return allowedFormations.includes("4-3-3") ? "4-3-3" : allowedFormations[0];
+}
+
+// The bench is the rest of the 15-player squad after the starting 11
+function buildBench(squad, startingTeam) {
+  const starterIds = startingTeam.map((player) => player.id);
+
+  return squad.filter((player) => !starterIds.includes(player.id));
+}
+
+// Choose a captain from the starting 11 using simple style-based logic
+function chooseCaptain(startingTeam) {
+  const choices = getUserChoices();
+  let reason = "";
+
+  const captain = startingTeam
+    .slice()
+    .sort((a, b) => captainScore(b, choices) - captainScore(a, choices))[0];
+
+  if (choices.teamStyle === "attacking") {
+    reason = "Chosen because attacking teams prefer the highest attack score from the starting 11.";
+  } else if (choices.riskStyle === "safe") {
+    reason = "Chosen because safe teams prefer a strong overall player with lower risk.";
+  } else {
+    reason = "Chosen because balanced teams prefer the best combined attack and defense score.";
+  }
+
+  return { captain, reason };
+}
+
+// Score captain options based on the user's selected style
+function captainScore(player, choices) {
+  if (choices.teamStyle === "attacking") {
+    return player.attack_score * 2 - player.risk_score;
+  }
+
+  if (choices.riskStyle === "safe") {
+    return player.attack_score + player.defense_score - player.risk_score * 2;
+  }
+
+  return player.attack_score + player.defense_score - player.risk_score;
 }
 
 // Read the choices from the form controls
@@ -130,6 +407,20 @@ function setupCountryFilters(players) {
       select.appendChild(option);
     });
   });
+}
+
+// Fill the formation selector using fantasyRules.json
+function setupFormationOptions() {
+  formationSelect.innerHTML = "";
+
+  fantasyRules.starting_lineup.allowed_formations.forEach((formation) => {
+    const option = document.createElement("option");
+    option.value = formation;
+    option.textContent = formation;
+    formationSelect.appendChild(option);
+  });
+
+  formationSelect.value = "4-3-3";
 }
 
 // Apply simple country, position, and price filters
@@ -249,21 +540,98 @@ function showCaptains(players) {
 
 // Create the formation view with shirt-style player tokens
 function showTeam(players) {
-  const team = buildStartingTeam(players);
+  const squad = buildFantasySquad(players);
+  const team = buildStartingTeam(squad);
+  const bench = buildBench(squad, team);
+  const captainPick = chooseCaptain(team);
+  const formationUsed = getGeneratedFormation();
+  const benchLine = document.querySelector("#generatedBenchLine");
+  const budgetSummary = document.querySelector("#squadBudgetSummary");
+  const ruleChecks = document.querySelector("#squadRuleChecks");
+  const formationSummary = document.querySelector("#formationSummary");
+  const captainSummary = document.querySelector("#captainSummary");
+  const fullSquadList = document.querySelector("#fullSquadList");
+  const budgetInfo = getBudgetInfo(squad);
+  const countryCounts = getCountryCounts(squad);
+  const maxPerCountry = fantasyRules.country_limits.group_stage_max_per_country;
+  const validationResults = validateSquad(squad, team, captainPick.captain, formationUsed, budgetInfo, countryCounts);
+  saveCurrentTeamExport(squad, team, bench, captainPick, formationUsed, budgetInfo, validationResults);
 
   document.querySelectorAll(".player-line").forEach((line) => {
     line.innerHTML = "";
+  });
+  benchLine.innerHTML = "";
+  fullSquadList.innerHTML = "";
+
+  budgetSummary.innerHTML = `
+    <div>
+      <strong>Total price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+    <div>
+      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+    <div>
+      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+  `;
+
+  budgetSummary.classList.toggle("warning", budgetInfo.isOverBudget);
+
+  if (budgetInfo.isOverBudget) {
+    budgetSummary.innerHTML += `<p>This draft squad is over budget. The app tried to choose cheaper players, but could not build a valid squad under budget with this simple logic.</p>`;
+  }
+
+  ruleChecks.innerHTML = `
+    <h3>Rule Checks</h3>
+    <div class="validation-list">
+      ${validationResults.map((result) => `
+        <div class="validation-item ${result.passed ? "pass" : "fail"}">
+          <strong>${result.passed ? "PASS" : "FAIL"}: ${result.label}</strong>
+          <p>${result.message}</p>
+        </div>
+      `).join("")}
+    </div>
+    <p><strong>Country counts:</strong> no more than ${maxPerCountry} players from the same country.</p>
+    <div class="country-count-list">
+      ${Object.entries(countryCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([country, count]) => `<span>${country}: ${count}</span>`)
+        .join("")}
+    </div>
+    <p class="rule-note">Players marked <strong>needs_check</strong> have unknown country data. The app limits them as one cautious group, but real countries should be checked later.</p>
+  `;
+
+  formationSummary.innerHTML = `
+    <strong>Formation used:</strong> ${formationUsed}
+    <span>Built from the allowed formations in fantasyRules.json.</span>
+  `;
+
+  captainSummary.innerHTML = `
+    <strong>Captain:</strong> ${captainPick.captain.name}
+    <span>${captainPick.reason}</span>
+    <span>Captain multiplier: ${fantasyRules.captain.captain_points_multiplier}x points.</span>
+  `;
+
+  squad.forEach((player, index) => {
+    const item = document.createElement("article");
+    item.className = "squad-list-item";
+    item.innerHTML = `
+      <strong>#${index + 1} ${player.name}</strong>
+      <span>${player.country} | ${player.club} | ${player.position} | ${player.price}</span>
+    `;
+    fullSquadList.appendChild(item);
   });
 
   team.forEach((player, index) => {
     const line = document.querySelector(`#${getLineId(player.position)}`);
     const token = document.createElement("div");
     token.className = "player-token";
+    const isCaptain = player.id === captainPick.captain.id;
 
     token.innerHTML = `
-      <div class="shirt">${index + 1}</div>
+      <div class="shirt">${isCaptain ? "C" : index + 1}</div>
       <p class="token-name">${player.name}</p>
-      <p class="token-position">${player.position}</p>
+      <p class="token-position">${player.position}${isCaptain ? " | Captain" : ""}</p>
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Club:</strong> ${player.club}</p>
@@ -278,6 +646,29 @@ function showTeam(players) {
 
     line.appendChild(token);
   });
+
+  bench.forEach((player, index) => {
+    benchLine.appendChild(createSimplePlayerToken(player, index + 1));
+  });
+}
+
+// Create a compact pitch-style card for generated bench players
+function createSimplePlayerToken(player, number) {
+  const token = document.createElement("div");
+  token.className = "player-token";
+
+  token.innerHTML = `
+    <div class="shirt">${number}</div>
+    <p class="token-name">${player.name}</p>
+    <p class="token-position">${player.position}</p>
+    <div class="player-details">
+      <p><strong>Country:</strong> ${player.country}</p>
+      <p><strong>Club:</strong> ${player.club}</p>
+      <p><strong>Price:</strong> ${player.price}</p>
+    </div>
+  `;
+
+  return token;
 }
 
 // Match positions to the correct pitch row
@@ -407,15 +798,17 @@ function showCustomBuilder(players) {
     }
   });
 
-  for (let i = 1; i <= 5; i++) {
-    customSlots.push({
-      id: `Bench-${i}`,
-      label: `Bench ${i}`,
-      position: "Any",
-      playerId: null,
-      isBench: true
-    });
-  }
+  getBenchPositions().forEach((group) => {
+    for (let i = 1; i <= group.count; i++) {
+      customSlots.push({
+        id: `Bench-${group.position}-${i}`,
+        label: `Bench ${group.label} ${i}`,
+        position: group.position,
+        playerId: null,
+        isBench: true
+      });
+    }
+  });
 
   activeSlotId = null;
   customSelectionPanel.classList.add("hidden");
@@ -435,13 +828,54 @@ function getFormationPositions() {
   ];
 }
 
+// Build bench labels from the 15-player squad rules and chosen formation
+function getBenchPositions() {
+  const squadRules = fantasyRules.squad.positions;
+  const startingPositions = getFormationPositions();
+  const startingCounts = {
+    Goalkeeper: 1,
+    Defender: startingPositions.find((group) => group.position === "Defender").count,
+    Midfielder: startingPositions.find((group) => group.position === "Midfielder").count,
+    Forward: startingPositions.find((group) => group.position === "Forward").count
+  };
+
+  return [
+    { label: "Goalkeeper", position: "Goalkeeper", count: squadRules.GK - startingCounts.Goalkeeper },
+    { label: "Defender", position: "Defender", count: squadRules.DEF - startingCounts.Defender },
+    { label: "Midfielder", position: "Midfielder", count: squadRules.MID - startingCounts.Midfielder },
+    { label: "Forward", position: "Forward", count: squadRules.FWD - startingCounts.Forward }
+  ].filter((group) => group.count > 0);
+}
+
 // Draw every custom pitch and bench slot
 function renderCustomSlots(players) {
+  const customBudgetSummary = document.querySelector("#customBudgetSummary");
+  const selectedPlayers = customSlots
+    .map((slot) => players.find((item) => item.id === slot.playerId))
+    .filter(Boolean);
+  const budgetInfo = getBudgetInfo(selectedPlayers);
+
   document.querySelectorAll(".custom-pitch .player-line").forEach((line) => {
     line.innerHTML = "";
   });
 
   document.querySelector("#benchList").innerHTML = "";
+  customBudgetSummary.innerHTML = `
+    <div>
+      <strong>Selected price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+    <div>
+      <strong>Remaining budget:</strong> ${budgetInfo.remainingBudget.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+    <div>
+      <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${fantasyRules.budget.currency_label}
+    </div>
+  `;
+  customBudgetSummary.classList.toggle("warning", budgetInfo.isOverBudget);
+
+  if (budgetInfo.isOverBudget) {
+    customBudgetSummary.innerHTML += `<p>Your custom squad is over the max spend. Try choosing a cheaper player.</p>`;
+  }
 
   customSlots.forEach((slot, index) => {
     const player = players.find((item) => item.id === slot.playerId);
@@ -488,7 +922,7 @@ function createSlotToken(slot, player, number) {
       <p class="token-name">${slot.label}</p>
       <p class="token-position">${slot.position}</p>
       <div class="player-details">
-        <p>Click to choose a ${slot.position === "Any" ? "bench player" : slot.position.toLowerCase()}.</p>
+        <p>Click to choose a ${slot.position.toLowerCase()}.</p>
       </div>
     `;
   }
@@ -522,7 +956,7 @@ function renderPlayerSelection(players) {
 
   filterPlayers(players, {
     country: customCountryFilter.value,
-    position: slot.position === "Any" ? "" : slot.position,
+    position: slot.position,
     maxPrice: customMaxPriceFilter.value
   })
     .filter((player) => !selectedIds.includes(player.id))
@@ -586,8 +1020,11 @@ filterToggleButtons.forEach((button) => {
 // Load players.json and build the helper when the page opens
 async function startWebsite() {
   try {
+    // The app uses one JSON file for players and one JSON file for rules.
     allPlayers = await loadPlayerData();
+    fantasyRules = await loadFantasyRules();
     setupCountryFilters(allPlayers);
+    setupFormationOptions();
 
     showSuggestions(allPlayers);
     showCaptains(allPlayers);
@@ -670,4 +1107,20 @@ customSelectionPanel.addEventListener("click", (event) => {
 
   customSelectionPanel.classList.add("hidden");
   activeSlotId = null;
+});
+
+// Download the current generated team as a JSON file
+exportTeamButton.addEventListener("click", () => {
+  if (!currentTeamExport) return;
+
+  const json = JSON.stringify(currentTeamExport, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "worldcup-fantasy-team.json";
+  link.click();
+
+  URL.revokeObjectURL(url);
 });
