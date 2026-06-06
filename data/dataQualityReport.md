@@ -389,7 +389,7 @@ The quality labels were revised so the website can recommend players more carefu
 `data_quality` groups:
 
 - high: 3
-- medium: 18
+- medium: 30
 - low: 0
 - unknown: 0
 
@@ -398,19 +398,19 @@ The quality labels were revised so the website can recommend players more carefu
 - high: 5
 - medium: 0
 - low: 0
-- unknown: 16
+- unknown: 28
 
 `national_team_data_quality` groups:
 
 - high: 14
 - medium: 6
 - low: 1
-- unknown: 0
+- unknown: 12
 
 `recommendation_status` groups:
 
 - eligible: 3
-- caution: 18
+- caution: 30
 - limited: 0
 - avoid: 0
 
@@ -460,6 +460,45 @@ These players are still useful, but should be shown with caution:
 `caution` players can still be recommended, but the website should make it clear that some supporting data is incomplete.
 
 No players are currently marked `limited` or `avoid` because every current player is from the official FIFA Fantasy pool and has at least some usable data.
+
+## Added GK And DEF Rows For Legal Squad Testing
+
+The official FIFA Fantasy rows collected directly from visible FIFA-indexed text only included:
+
+- FWD: 8
+- MID: 13
+
+That was not enough to build a legal 15-player fantasy squad.
+
+To test legal squad building, 12 additional goalkeeper and defender rows were added from RotoWire's 2026 FIFA World Cup Fantasy rankings.
+
+Current `data/players.json` position counts:
+
+- GK: 4
+- DEF: 8
+- MID: 13
+- FWD: 8
+
+These added GK and DEF rows include fantasy positions and prices from the RotoWire fantasy ranking page, but they still need direct verification inside the official FIFA Fantasy app.
+
+The builder can now create a 15-player squad with:
+
+- 2 GK
+- 5 DEF
+- 5 MID
+- 3 FWD
+
+Latest local logic test:
+
+- squad size: 15
+- total price: 96.5
+- budget: 100
+- position requirements: pass
+- country limit: pass
+
+Data honesty note:
+
+Do not treat the RotoWire-added rows as perfectly verified direct FIFA exports. They are practical Week 6 helper rows and should be checked against the official FIFA Fantasy player pool when possible.
 
 ## Fixture Difficulty And Score Prediction Data
 

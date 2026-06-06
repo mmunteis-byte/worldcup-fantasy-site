@@ -479,6 +479,28 @@ If only goals or appearances are visible, include those and leave the rest as `n
 
 If a full player source is not available, mark the row as partial instead of pretending it is complete.
 
+## Added Defensive Fantasy Player Rows
+
+Source:
+
+https://www.rotowire.com/soccer/article/2026-fifa-world-cup-fantasy-rankings-best-picks-for-matchday-1-116025
+
+Used for:
+
+- extra goalkeeper rows
+- extra defender rows
+- fantasy position
+- fantasy price
+- opening fixture context
+
+Important note:
+
+These rows were added because the official FIFA Fantasy page is a JavaScript app and the directly visible FIFA player rows only included midfielders and forwards.
+
+RotoWire's 2026 FIFA World Cup Fantasy rankings list player fantasy positions and prices, but these added rows are marked in the data notes as `needs_direct_fifa_check`.
+
+They should be directly verified inside the official FIFA Fantasy app when the full player pool can be copied or exported.
+
 ## Fixture Difficulty And Score Prediction Sources
 
 Files created:
