@@ -568,3 +568,13 @@ This is a simple prototype model based on team strength ratings.
 It does not use betting odds.
 
 It is not an official FIFA prediction.
+
+## Club Matching Status
+
+Club matching is currently paused.
+
+The official FIFA Fantasy player data checked so far includes player names, countries, fantasy positions, prices, and fixtures, but it does not include a clear club field.
+
+The local `transfermarktPlayers.csv` file was not used because its available season field is not recent enough for the current project standard.
+
+For club matching, use a credible 2025 or 2025-2026 source only. Until then, club and league fields should stay `null` or `needs_check`.

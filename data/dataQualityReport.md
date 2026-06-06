@@ -580,3 +580,19 @@ It does not include:
 - betting odds
 
 The model should be shown on the website as a prototype team-strength model, not as an official prediction.
+
+## Club Matching Status
+
+Club matching is currently paused.
+
+The local `transfermarktPlayers.csv` file was not used because its available season field is not recent enough for the current project standard.
+
+Current counts:
+
+- Players in `data/players.json`: 1,481
+- Players with matched club: 0
+- Players still missing club: 1,481
+
+Quality note:
+
+The official FIFA Fantasy data checked so far does not include a clear club field. Club and league should remain `null` until a credible 2025 or 2025-2026 source is matched.
