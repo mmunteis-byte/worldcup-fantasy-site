@@ -78,7 +78,7 @@ async function loadFantasyRules() {
   return response.json();
 }
 
-// Load one helper JSON file. Keeping this small makes adding Week 6 data files easy.
+// Load one helper JSON file. Keeping this small makes adding extra data files easy.
 async function loadJsonFile(filePath) {
   const response = await fetch(filePath);
 
@@ -89,7 +89,7 @@ async function loadJsonFile(filePath) {
   return response.json();
 }
 
-// Load all Week 6 data used by the recommendation engine.
+// Load all helper data used by the recommendation engine.
 async function loadRecommendationData() {
   [
     allTeams,
@@ -1590,19 +1590,19 @@ function getTeamCountry(teamId) {
   return dataMaps.teamById?.get(teamId)?.country || teamId;
 }
 
-function showWeek6Data(players) {
-  showDataFreshness();
-  showOfficialDataSummary(players);
-  showDataRuleValidation(players);
-  showTeamDataSummary();
+function showFixturesTab() {
+  showFixtureDataNote();
   showFixtures();
 }
 
-function showDataFreshness() {
-  const container = document.querySelector("#dataFreshnessNote");
+function showFixtureDataNote() {
+  const container = document.querySelector("#fixtureDataNote");
+
+  if (!container) return;
+
   container.innerHTML = `
     <strong>Last updated:</strong> June 5, 2026
-    <span>Week 6 data sprint files loaded from the local data folder.</span>
+    <span>Fixtures use the local fixture file. Difficulty and expected goals are helper predictions, not betting odds.</span>
   `;
 }
 
@@ -1658,8 +1658,43 @@ function showTeamDataSummary() {
   }).join("");
 }
 
+function showGroups() {
+  const container = document.querySelector("#groupList");
+
+  if (!container) return;
+
+  const groups = allTeams.reduce((groupMap, team) => {
+    const group = team.group || "needs_check";
+    groupMap[group] = groupMap[group] || [];
+    groupMap[group].push(team);
+    return groupMap;
+  }, {});
+
+  container.innerHTML = Object.entries(groups)
+    .sort(([groupA], [groupB]) => groupA.localeCompare(groupB))
+    .map(([group, teams]) => `
+      <article class="group-card">
+        <h3>Group ${group}</h3>
+        <div class="group-team-list">
+          ${teams
+            .slice()
+            .sort((a, b) => Number(a.fifa_ranking || 999) - Number(b.fifa_ranking || 999))
+            .map((team) => `
+              <div class="group-team-row">
+                <strong>${team.country}</strong>
+                <span>FIFA rank ${team.fifa_ranking ?? "needs_check"}</span>
+              </div>
+            `).join("")}
+        </div>
+      </article>
+    `).join("");
+}
+
 function showFixtures() {
   const container = document.querySelector("#fixtureList");
+
+  if (!container) return;
+
   const selectedTeamId = fixtureCountryFilter.value;
   const selectedMatchday = fixtureMatchdayFilter.value;
   const matchday = allMatchdays.find((item) => item.matchday_id === selectedMatchday);
@@ -2007,7 +2042,8 @@ async function startWebsite() {
     showTeam(allPlayers);
     showCustomBuilder(allPlayers);
     showPlayerPool(allPlayers);
-    showWeek6Data(allPlayers);
+    showFixturesTab();
+    showGroups();
     showOutlook(allPlayers);
     showWatchlist(allPlayers);
   } catch (error) {
@@ -2026,7 +2062,6 @@ startWebsite();
     showCaptains(allPlayers);
     showTeam(allPlayers);
     showPlayerPool(allPlayers);
-    showWeek6Data(allPlayers);
     showWatchlist(allPlayers);
   });
 });
@@ -2065,7 +2100,7 @@ formationSelect.addEventListener("change", () => {
   });
 });
 
-// Filter the Week 6 fixture list
+// Filter the fixture list
 [fixtureCountryFilter, fixtureMatchdayFilter].forEach((input) => {
   input.addEventListener("input", () => {
     if (allFixtures.length === 0) return;

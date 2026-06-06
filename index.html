@@ -24,7 +24,7 @@
         </div>
         <div class="hero-panel stat-poster">
           <div>
-            <span>33</span>
+            <span>1481</span>
             <p>fantasy rows loaded</p>
           </div>
           <div>
@@ -132,7 +132,7 @@
       <!-- Clear prototype notes for data and draft rules -->
       <div class="site-notes" aria-label="Important site notes">
         <p>This site uses official FIFA Fantasy player rows and official FIFA Fantasy rules where they are visible. Rules marked needs_check are still being verified.</p>
-        <p>The current official player file is incomplete. Missing support data is shown with caution instead of being guessed.</p>
+        <p>Club, league, performance, and prediction fields are helper data or still being matched, so incomplete support data is shown with caution instead of being guessed.</p>
       </div>
 
       <!-- Tab buttons switch between each helper view -->
@@ -142,7 +142,8 @@
         <button class="tab-button" data-tab="team">My XI</button>
         <button class="tab-button" data-tab="custom">Create XI</button>
         <button class="tab-button" data-tab="pool">Player Pool</button>
-        <button class="tab-button" data-tab="week6data">Week 6 Data</button>
+        <button class="tab-button" data-tab="fixtures">Fixtures</button>
+        <button class="tab-button" data-tab="groups">Groups</button>
         <button class="tab-button" data-tab="outlook">Country Outlook</button>
         <button class="tab-button" data-tab="watchlist">Watchlist</button>
       </div>
@@ -307,20 +308,9 @@
         <div id="playerPoolList" class="pool-grid"></div>
       </div>
 
-      <!-- Week 6 official and helper data tab -->
-      <div id="week6data" class="tab-panel">
-        <div class="data-freshness" id="dataFreshnessNote"></div>
-
-        <h3 class="custom-title">Official Fantasy Data</h3>
-        <div id="officialDataSummary" class="data-grid"></div>
-
-        <h3 class="custom-title bench-title">Rule Validation</h3>
-        <div id="dataRuleValidation" class="rule-checks"></div>
-
-        <h3 class="custom-title bench-title">Team Data</h3>
-        <div id="teamDataSummary" class="data-grid"></div>
-
-        <h3 class="custom-title bench-title">Fixtures</h3>
+      <!-- Fixtures tab -->
+      <div id="fixtures" class="tab-panel">
+        <div class="data-freshness" id="fixtureDataNote"></div>
         <div class="filter-tools">
           <label>
             Country
@@ -337,12 +327,11 @@
           </label>
         </div>
         <div id="fixtureList" class="fixture-list"></div>
+      </div>
 
-        <h3 class="custom-title bench-title">Data Warning</h3>
-        <div class="site-notes">
-          <p>Official FIFA Fantasy data is used where available for player pool, positions, prices, and visible rules.</p>
-          <p>Club performance, national team performance, fixture difficulty, expected goals, and score predictions are helper or prototype fields unless clearly marked as official.</p>
-        </div>
+      <!-- Groups tab -->
+      <div id="groups" class="tab-panel">
+        <div id="groupList" class="group-grid"></div>
       </div>
 
       <!-- Countries to watch for future planning tab -->

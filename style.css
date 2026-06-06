@@ -1107,7 +1107,7 @@ h1 {
   line-height: 1.35;
 }
 
-/* Week 6 data panels */
+/* Data and fixture panels */
 .data-freshness {
   display: grid;
   gap: 4px;
@@ -1186,6 +1186,49 @@ h1 {
 .fixture-meta {
   display: grid;
   gap: 6px;
+}
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.group-card {
+  padding: 16px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.group-card h3 {
+  margin: 0 0 12px;
+  color: white;
+  font-size: 22px;
+}
+
+.group-team-list {
+  display: grid;
+  gap: 8px;
+}
+
+.group-team-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #303038;
+}
+
+.group-team-row strong {
+  color: white;
+}
+
+.group-team-row span {
+  color: #c9c9d1;
+  font-size: 13px;
 }
 
 /* Custom starting 11 builder */
