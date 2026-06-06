@@ -50,13 +50,21 @@ Link:
 
 https://play.fifa.com/fantasy/team
 
+Official JSON files referenced by the FIFA Fantasy app:
+
+https://play.fifa.com/json/fantasy/players.json
+
+https://play.fifa.com/json/fantasy/squads.json
+
 Used for:
 
-- official visible fantasy player rows
+- official FIFA Fantasy player pool
 - player display names
 - national team codes
 - official fantasy positions
 - official fantasy prices
+- official player status
+- official team/country mapping from squad IDs
 
 File created:
 
@@ -64,9 +72,9 @@ File created:
 
 Important note:
 
-Only 21 player rows were visible from the checked official indexed text. This is partial official data, not the full player pool.
+The official FIFA Fantasy app references public JSON data files. `players.json` contains the full official fantasy player pool used in the app, and `squads.json` maps each `squadId` to a country name and abbreviation.
 
-No easy public download button or clearly documented official data API was visible during this check. The safest next step is manual or semi-manual collection from the visible Player Pool table in the official FIFA Fantasy app.
+Club and league are not included in the official fantasy player JSON, so those fields stay `null` until another reputable source is matched later.
 
 ### FIFA World Cup Fantasy launched article
 

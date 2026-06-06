@@ -482,6 +482,41 @@ function getRuleChecksObject(validationResults) {
   }, {});
 }
 
+function createRuleCheckPanel(validationResults, countryCounts, maxPerCountry, title, extraContent = "") {
+  const passedCount = validationResults.filter((result) => result.passed).length;
+  const totalCount = validationResults.length;
+  const isLegal = passedCount === totalCount;
+
+  return `
+    <details class="rule-details">
+      <summary>
+        <span>${title}</span>
+        <strong>${isLegal ? "Legal squad" : "Needs review"} · ${passedCount}/${totalCount} checks passed</strong>
+      </summary>
+      <div class="rule-details-body">
+        ${extraContent}
+        <div class="validation-list">
+          ${validationResults.map((result) => `
+            <div class="validation-item ${result.passed ? "pass" : "fail"}">
+              <strong>${result.passed ? "PASS" : "FAIL"}: ${result.label}</strong>
+              <p>${result.message}</p>
+            </div>
+          `).join("")}
+        </div>
+        <p><strong>Country counts:</strong> no more than ${maxPerCountry} players from the same country.</p>
+        <div class="country-count-list">
+          ${Object.entries(countryCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([country, count]) => `<span>${country}: ${count}</span>`)
+            .join("")}
+        </div>
+        <p class="rule-note">Players marked <strong>needs_check</strong> have unknown country data. The app limits them as one cautious group, but real countries should be checked later.</p>
+        <p class="rule-note">The recommendation engine uses official players, official prices, official positions, player quality labels, club and national performance, fixture difficulty, expected goals, budget, country limits, starting 11, and captain rules.</p>
+      </div>
+    </details>
+  `;
+}
+
 // Keep the latest generated team ready for export
 function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formationUsed, budgetInfo, validationResults) {
   const choices = getUserChoices();
@@ -1355,27 +1390,7 @@ function showTeam(players) {
     budgetSummary.innerHTML += `<p>This draft squad is over budget. The app tried to choose cheaper players, but could not build a valid squad under budget with this simple logic.</p>`;
   }
 
-  ruleChecks.innerHTML = `
-    <h3>Rule Checks</h3>
-    <div class="validation-list">
-      ${validationResults.map((result) => `
-        <div class="validation-item ${result.passed ? "pass" : "fail"}">
-          <strong>${result.passed ? "PASS" : "FAIL"}: ${result.label}</strong>
-          <p>${result.message}</p>
-        </div>
-      `).join("")}
-    </div>
-    <p><strong>Country counts:</strong> no more than ${maxPerCountry} players from the same country.</p>
-    <div class="country-count-list">
-      ${Object.entries(countryCounts)
-        .sort((a, b) => b[1] - a[1])
-        .map(([country, count]) => `<span>${country}: ${count}</span>`)
-        .join("")}
-    </div>
-    <p class="rule-note">Players marked <strong>needs_check</strong> have unknown country data. The app limits them as one cautious group, but real countries should be checked later.</p>
-    <p class="rule-note">The recommendation engine uses official players, official prices, official positions, player quality labels, club and national performance, fixture difficulty, expected goals, budget, country limits, starting 11, and captain rules.</p>
-    <p class="rule-note">If the official data completeness check fails, the fix is to add more official FIFA Fantasy player rows to <strong>data/fifaFantasyPlayers.json</strong> and rebuild <strong>data/players.json</strong>. The app will not fill missing official positions with prototype players.</p>
-  `;
+  ruleChecks.innerHTML = createRuleCheckPanel(validationResults, countryCounts, maxPerCountry, "Rule Checks");
 
   formationSummary.innerHTML = `
     <strong>Formation used:</strong> ${formationUsed}
@@ -1621,19 +1636,13 @@ function showDataRuleValidation(players) {
   const isLegal = validationResults.every((result) => result.passed);
   const container = document.querySelector("#dataRuleValidation");
 
-  container.innerHTML = `
-    <h3>${isLegal ? "Squad is legal" : "Squad is not legal yet"}</h3>
-    <div class="validation-list">
-      ${validationResults.map((result) => `
-        <div class="validation-item ${result.passed ? "pass" : "fail"}">
-          <strong>${result.passed ? "PASS" : "FAIL"}: ${result.label}</strong>
-          <p>${result.message}</p>
-        </div>
-      `).join("")}
-    </div>
-    <p><strong>Bench players:</strong> ${bench.length}</p>
-    <p>The current official player file is incomplete, so this section may show failed GK or DEF requirements until more official rows are added.</p>
-  `;
+  container.innerHTML = createRuleCheckPanel(
+    validationResults,
+    countryCounts,
+    getGroupStageCountryLimit(),
+    isLegal ? "Squad is legal" : "Squad is not legal yet",
+    `<p><strong>Bench players:</strong> ${bench.length}</p>`
+  );
 }
 
 function showTeamDataSummary() {
@@ -1864,6 +1873,21 @@ function openPlayerSelection(slotId) {
   renderPlayerSelection(allPlayers);
 }
 
+// Find the custom players already picked, ignoring the slot currently being edited
+function getSelectedCustomPlayersExcept(slotId, players) {
+  return customSlots
+    .filter((slot) => slot.id !== slotId)
+    .map((slot) => players.find((item) => getPlayerId(item) === slot.playerId))
+    .filter(Boolean);
+}
+
+// Work out how much money is left for the open custom team slot
+function getMaxAffordableForSlot(slotId, players) {
+  const selectedPlayers = getSelectedCustomPlayersExcept(slotId, players);
+  const spentWithoutActiveSlot = getSquadTotalPrice(selectedPlayers);
+  return getBudgetLimit() - spentWithoutActiveSlot;
+}
+
 // Show eligible players for the active slot
 function renderPlayerSelection(players) {
   const slot = customSlots.find((item) => item.id === activeSlotId);
@@ -1874,22 +1898,41 @@ function renderPlayerSelection(players) {
   const selectedIds = customSlots
     .filter((item) => item.id !== activeSlotId && item.playerId)
     .map((item) => item.playerId);
+  const maxAffordable = getMaxAffordableForSlot(activeSlotId, players);
+  const currencyLabel = getCurrencyLabel();
 
   title.textContent = `Choose ${slot.label}`;
-  container.innerHTML = "";
+  container.innerHTML = `
+    <div class="selection-budget-note">
+      Budget left for this slot: ${Math.max(0, maxAffordable).toFixed(1)} ${currencyLabel}
+    </div>
+  `;
 
-  filterPlayers(getOfficialPlayerPool(players), {
+  const eligiblePlayers = filterPlayers(getOfficialPlayerPool(players), {
     country: customCountryFilter.value,
     position: slot.position,
     maxPrice: customMaxPriceFilter.value
   })
     .filter((player) => !selectedIds.includes(getPlayerId(player)))
+    .filter((player) => getPlayerPrice(player) <= maxAffordable)
     .filter((player) => {
       const text = `${player.name} ${getPlayerClub(player)} ${getPlayerPosition(player)}`.toLowerCase();
       return text.includes(searchText);
     })
-    .sort((a, b) => sortPlayers(a, b, sortBy))
-    .forEach((player) => {
+    .sort((a, b) => sortPlayers(a, b, sortBy));
+
+  if (eligiblePlayers.length === 0) {
+    container.innerHTML += `
+      <div class="pool-card empty-selection-card">
+        <h3>No affordable players found</h3>
+        <p>No players fit this position, your filters, and the remaining budget.</p>
+        <p>Try removing a player, choosing a cheaper player, or clearing a filter.</p>
+      </div>
+    `;
+    return;
+  }
+
+  eligiblePlayers.forEach((player) => {
       const card = document.createElement("button");
       card.className = "pool-card selection-card";
       card.type = "button";
@@ -1901,13 +1944,20 @@ function renderPlayerSelection(players) {
       `;
 
       card.addEventListener("click", () => {
+        const currentMaxAffordable = getMaxAffordableForSlot(activeSlotId, allPlayers);
+
+        if (getPlayerPrice(player) > currentMaxAffordable) {
+          renderPlayerSelection(allPlayers);
+          return;
+        }
+
         slot.playerId = getPlayerId(player);
         renderCustomSlots(allPlayers);
         customSelectionPanel.classList.add("hidden");
       });
 
       container.appendChild(card);
-    });
+  });
 }
 
 // Show a helpful message if players.json cannot load

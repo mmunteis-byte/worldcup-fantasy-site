@@ -774,6 +774,60 @@ h1 {
   color: white;
 }
 
+.rule-details {
+  color: #c9c9d1;
+}
+
+.rule-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.rule-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.rule-details summary span {
+  color: white;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.rule-details summary strong {
+  padding: 7px 10px;
+  color: #e30613;
+  background: white;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.rule-details summary::after {
+  content: "+";
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: white;
+  background: #e30613;
+  border-radius: 50%;
+  font-weight: 900;
+}
+
+.rule-details[open] summary::after {
+  content: "-";
+}
+
+.rule-details-body {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #303038;
+}
+
 .validation-list {
   display: grid;
   gap: 10px;
@@ -1304,6 +1358,22 @@ h1 {
   max-height: 440px;
 }
 
+.selection-budget-note,
+.empty-selection-card {
+  grid-column: 1 / -1;
+}
+
+.selection-budget-note {
+  padding: 12px 14px;
+  color: white;
+  background: #241116;
+  border: 1px solid rgba(227, 6, 19, 0.45);
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .selection-card {
   width: 100%;
   text-align: left;
@@ -1399,5 +1469,14 @@ h1 {
 
   .fixture-card {
     grid-template-columns: 1fr;
+  }
+
+  .rule-details summary {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .rule-details summary strong {
+    white-space: normal;
   }
 }

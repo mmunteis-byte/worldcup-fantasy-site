@@ -4,13 +4,15 @@
 
 Date checked:
 
-2026-06-04
+2026-06-05
 
 Official sources checked:
 
 - https://play.fifa.com/fantasy/
 - https://play.fifa.com/fantasy/help
 - https://play.fifa.com/fantasy/team
+- https://play.fifa.com/json/fantasy/players.json
+- https://play.fifa.com/json/fantasy/squads.json
 
 ## Official Fantasy Players Found
 
@@ -20,7 +22,32 @@ Official fantasy players added to:
 
 Count:
 
-21 official fantasy player rows
+1,481 official fantasy player rows
+
+Position counts:
+
+- Goalkeepers: 181
+- Defenders: 482
+- Midfielders: 512
+- Forwards: 306
+
+What is complete:
+
+- official FIFA Fantasy player IDs
+- official player names
+- official FIFA Fantasy positions
+- official FIFA Fantasy prices
+- official player selectable/status field
+- official country/team mapping through `squads.json`
+
+What is missing:
+
+- club
+- league
+
+Why fields are missing:
+
+The official FIFA Fantasy `players.json` file does not include club or league fields. Those should stay `null` until matched from another reputable source.
 
 ## Rebuilt Website Player File
 
@@ -30,17 +57,21 @@ Official fantasy players were used to create:
 
 Counts:
 
-- Number of official fantasy players: 21
-- Number of players with prices: 21
-- Number of players with positions: 21
-- Number of players missing club: 21
-- Number of players missing league: 21
+- Number of official fantasy players: 1,481
+- Number of players with prices: 1,481
+- Number of players with positions: 1,481
+- Number of players missing club: 1,481
+- Number of players missing league: 1,481
+- Number of players marked `playing`: 1,248
+- Number of players marked `transferred`: 233
 
 Important note:
 
-`data/players.json` now uses `data/fifaFantasyPlayers.json` as the source of truth. The `position` field comes from `official_fantasy_position`, and the price comes from `official_price`.
+`data/fifaFantasyPlayers.json` has now been rebuilt from the full official FIFA Fantasy JSON file.
 
-Club and league are `null` because they were not visible in the checked official FIFA Fantasy player pool text.
+`data/players.json` has also been rebuilt from the updated official file. The website player pool now has the full official FIFA Fantasy player pool.
+
+Club and league are `null` because they are not included in the official FIFA Fantasy player JSON.
 
 ## FIFA World Cup 2026 Teams File
 
@@ -203,28 +234,20 @@ When checked directly, the pages returned:
 
 No easy public download button or clearly documented official data API was visible during this check.
 
-## Easiest Legal Manual Or Semi-Manual Collection Method
+## Official Player Pool Collection Method
 
-The easiest legal next step is manual or semi-manual collection from the official FIFA Fantasy player pool in the browser.
+The official FIFA Fantasy app references public JSON files for the player pool.
 
-Suggested method:
+Files used:
 
-1. Open https://play.fifa.com/fantasy/team in a browser.
-2. Use the visible Player Pool table.
-3. Sort or filter by position if the app allows it.
-4. Copy player rows into a CSV file.
-5. Use this CSV format:
+- https://play.fifa.com/json/fantasy/players.json
+- https://play.fifa.com/json/fantasy/squads.json
 
-```text
-name,country,team_id,official_fantasy_position,official_price,club,league,selectable_status
-```
-
-6. Leave unknown fields blank.
-7. Convert the CSV into `data/fifaFantasyPlayers.json`.
+These files were used to rebuild `data/fifaFantasyPlayers.json`.
 
 Important:
 
-Only copy data that is visible to you in the official FIFA Fantasy app. Do not bypass login, access controls, rate limits, or website rules.
+The file `data/players.json` still needs to be rebuilt from the updated official fantasy player file before the website shows the full player pool.
 
 ## Data Honesty Rule
 
@@ -388,31 +411,31 @@ The quality labels were revised so the website can recommend players more carefu
 
 `data_quality` groups:
 
-- high: 3
-- medium: 30
-- low: 0
+- high: 1
+- medium: 7
+- low: 1,473
 - unknown: 0
 
 `club_data_quality` groups:
 
-- high: 5
+- high: 0
 - medium: 0
 - low: 0
-- unknown: 28
+- unknown: 1,481
 
 `national_team_data_quality` groups:
 
-- high: 14
-- medium: 6
-- low: 1
-- unknown: 12
+- high: 1
+- medium: 7
+- low: 0
+- unknown: 1,473
 
 `recommendation_status` groups:
 
-- eligible: 3
-- caution: 30
+- eligible: 1
+- caution: 1,247
 - limited: 0
-- avoid: 0
+- avoid: 233
 
 ## How The Labels Are Used
 
@@ -430,28 +453,30 @@ Medium `data_quality` means:
 - the player has an official price and position
 - some performance data is missing or partial
 
+Low `data_quality` means:
+
+- the player is in the official FIFA Fantasy pool
+- the player has an official price and position
+- useful club and national team performance data has not been matched yet
+
 No official FIFA Fantasy player was deleted because of weak supporting data.
 
 ## Examples Of Strong Data
 
-These players currently have strong overall data:
+This player currently has the strongest overall data from the local support files:
 
 - Haaland
-- Saka
-- Bruno Fernandes
 
-They have official fantasy data, useful club performance data, and useful national team performance data.
+He has official fantasy data and useful national team performance data matched from the local support file.
 
 ## Examples Of Weaker Or Partial Data
 
 These players are still useful, but should be shown with caution:
 
-- Kane: strong national team data, but club performance data has not been matched yet
-- Mbappé: strong national team data, but club performance data has not been matched yet
-- Messi: partial national team data and no matched club performance row yet
-- Vinícius Júnior: partial national team data and no matched club performance row yet
-- Mohamed Salah: strong club data, but only limited national team qualifying data was found
-- Díaz: strong club data, but only partial national team qualifying data was found
+- Harry Kane: official fantasy data is complete, but club performance data has not been matched yet
+- Kylian Mbappé: official fantasy data is complete, but club performance data has not been matched yet
+- Lionel Messi: official fantasy data is complete, but supporting performance data needs more matching
+- Lamine Yamal: official fantasy data is complete, but supporting performance data needs more matching
 
 ## Recommendation Status Notes
 
@@ -459,46 +484,31 @@ These players are still useful, but should be shown with caution:
 
 `caution` players can still be recommended, but the website should make it clear that some supporting data is incomplete.
 
-No players are currently marked `limited` or `avoid` because every current player is from the official FIFA Fantasy pool and has at least some usable data.
+`avoid` players are official FIFA Fantasy rows with a `transferred` status. They are kept in the data file for honesty, but the website should avoid recommending them normally.
 
-## Added GK And DEF Rows For Legal Squad Testing
+## Full Official Player Pool Update
 
-The official FIFA Fantasy rows collected directly from visible FIFA-indexed text only included:
+The old temporary GK and DEF helper rows are no longer needed.
 
-- FWD: 8
-- MID: 13
-
-That was not enough to build a legal 15-player fantasy squad.
-
-To test legal squad building, 12 additional goalkeeper and defender rows were added from RotoWire's 2026 FIFA World Cup Fantasy rankings.
+`data/fifaFantasyPlayers.json` and `data/players.json` now use the official FIFA Fantasy JSON player pool.
 
 Current `data/players.json` position counts:
 
-- GK: 4
-- DEF: 8
-- MID: 13
-- FWD: 8
+- GK: 181
+- DEF: 482
+- MID: 512
+- FWD: 306
 
-These added GK and DEF rows include fantasy positions and prices from the RotoWire fantasy ranking page, but they still need direct verification inside the official FIFA Fantasy app.
-
-The builder can now create a 15-player squad with:
+The builder has enough official players to create legal 15-player squads with:
 
 - 2 GK
 - 5 DEF
 - 5 MID
 - 3 FWD
 
-Latest local logic test:
-
-- squad size: 15
-- total price: 96.5
-- budget: 100
-- position requirements: pass
-- country limit: pass
-
 Data honesty note:
 
-Do not treat the RotoWire-added rows as perfectly verified direct FIFA exports. They are practical Week 6 helper rows and should be checked against the official FIFA Fantasy player pool when possible.
+Official fantasy player names, player IDs, countries, positions, prices, and statuses come from FIFA's JSON data. Club, league, performance, and prediction fields still need separate matching or should stay clearly labeled as missing/prototype.
 
 ## Fixture Difficulty And Score Prediction Data
 
