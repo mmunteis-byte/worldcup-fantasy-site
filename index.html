@@ -24,8 +24,8 @@
         </div>
         <div class="hero-panel stat-poster">
           <div>
-            <span>21</span>
-            <p>official rows loaded</p>
+            <span>33</span>
+            <p>fantasy rows loaded</p>
           </div>
           <div>
             <span>48</span>
@@ -110,6 +110,8 @@
             <option value="balanced">Balanced</option>
             <option value="attacking">Attacking</option>
             <option value="defensive">Defensive</option>
+            <option value="chaos">Chaos</option>
+            <option value="underdog">Underdog</option>
           </select>
         </label>
 
@@ -140,6 +142,7 @@
         <button class="tab-button" data-tab="team">My XI</button>
         <button class="tab-button" data-tab="custom">Create XI</button>
         <button class="tab-button" data-tab="pool">Player Pool</button>
+        <button class="tab-button" data-tab="week6data">Week 6 Data</button>
         <button class="tab-button" data-tab="outlook">Country Outlook</button>
         <button class="tab-button" data-tab="watchlist">Watchlist</button>
       </div>
@@ -302,6 +305,44 @@
         </div>
         <p id="playerPoolCount" class="pool-count"></p>
         <div id="playerPoolList" class="pool-grid"></div>
+      </div>
+
+      <!-- Week 6 official and helper data tab -->
+      <div id="week6data" class="tab-panel">
+        <div class="data-freshness" id="dataFreshnessNote"></div>
+
+        <h3 class="custom-title">Official Fantasy Data</h3>
+        <div id="officialDataSummary" class="data-grid"></div>
+
+        <h3 class="custom-title bench-title">Rule Validation</h3>
+        <div id="dataRuleValidation" class="rule-checks"></div>
+
+        <h3 class="custom-title bench-title">Team Data</h3>
+        <div id="teamDataSummary" class="data-grid"></div>
+
+        <h3 class="custom-title bench-title">Fixtures</h3>
+        <div class="filter-tools">
+          <label>
+            Country
+            <select id="fixtureCountryFilter"></select>
+          </label>
+          <label>
+            Matchday
+            <select id="fixtureMatchdayFilter">
+              <option value="group_md1">Matchday 1</option>
+              <option value="group_md2">Matchday 2</option>
+              <option value="group_md3">Matchday 3</option>
+              <option value="group_stage_full">Full group stage</option>
+            </select>
+          </label>
+        </div>
+        <div id="fixtureList" class="fixture-list"></div>
+
+        <h3 class="custom-title bench-title">Data Warning</h3>
+        <div class="site-notes">
+          <p>Official FIFA Fantasy data is used where available for player pool, positions, prices, and visible rules.</p>
+          <p>Club performance, national team performance, fixture difficulty, expected goals, and score predictions are helper or prototype fields unless clearly marked as official.</p>
+        </div>
       </div>
 
       <!-- Countries to watch for future planning tab -->

@@ -1053,6 +1053,87 @@ h1 {
   line-height: 1.35;
 }
 
+/* Week 6 data panels */
+.data-freshness {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 14px;
+  color: #c9c9d1;
+  background: #241116;
+  border: 1px solid #303038;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.data-freshness strong {
+  color: white;
+}
+
+.data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.data-card {
+  padding: 16px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-radius: 8px;
+}
+
+.data-card h3 {
+  margin: 0 0 8px;
+  color: white;
+  font-size: 20px;
+}
+
+.data-card p {
+  margin: 0;
+  color: #c9c9d1;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.fixture-list {
+  display: grid;
+  gap: 10px;
+  max-height: 620px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.fixture-card {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(240px, 1fr);
+  gap: 14px;
+  padding: 14px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.fixture-card strong {
+  color: white;
+}
+
+.fixture-card p,
+.fixture-meta span {
+  margin: 6px 0 0;
+  color: #c9c9d1;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.fixture-meta {
+  display: grid;
+  gap: 6px;
+}
+
 /* Custom starting 11 builder */
 .formation-choice {
   display: grid;
@@ -1313,6 +1394,10 @@ h1 {
   }
 
   .selection-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .fixture-card {
     grid-template-columns: 1fr;
   }
 }
