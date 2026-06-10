@@ -16,6 +16,10 @@ const playerDetailPanel = document.querySelector("#playerDetailPanel");
 const playerDetailTitle = document.querySelector("#playerDetailTitle");
 const playerDetailContent = document.querySelector("#playerDetailContent");
 const closePlayerDetailButton = document.querySelector("#closePlayerDetailButton");
+const countryDetailPanel = document.querySelector("#countryDetailPanel");
+const countryDetailTitle = document.querySelector("#countryDetailTitle");
+const countryDetailContent = document.querySelector("#countryDetailContent");
+const closeCountryDetailButton = document.querySelector("#closeCountryDetailButton");
 const picksCountryFilter = document.querySelector("#picksCountryFilter");
 const picksPositionFilter = document.querySelector("#picksPositionFilter");
 const picksMaxPriceFilter = document.querySelector("#picksMaxPriceFilter");
@@ -29,6 +33,8 @@ const fixtureMatchdayFilter = document.querySelector("#fixtureMatchdayFilter");
 const wordleGuessInput = document.querySelector("#wordleGuessInput");
 const playerGuessOptions = document.querySelector("#playerGuessOptions");
 const guessPlayerButton = document.querySelector("#guessPlayerButton");
+const giveUpWordleButton = document.querySelector("#giveUpWordleButton");
+const wordleGuessCounter = document.querySelector("#wordleGuessCounter");
 const wordleResult = document.querySelector("#wordleResult");
 const scoringRulesContent = document.querySelector("#scoringRulesContent");
 const clearCustomFiltersButton = document.querySelector("#clearCustomFiltersButton");
@@ -52,6 +58,12 @@ let activeSlotId = null;
 let activeHeroSlide = 0;
 let currentTeamExport = null;
 const DATA_LAST_UPDATED = "2026-06-05";
+const APP_VERSION = "20260610g";
+const WORDLE_MAX_GUESSES = 10;
+
+function versionedDataPath(filePath) {
+  return `${filePath}?v=${APP_VERSION}`;
+}
 
 // Rotate the homepage poster every 5 seconds
 function showHeroSlide(index) {
@@ -69,7 +81,7 @@ setInterval(() => {
 
 // Load the real player database from players.json
 async function loadPlayerData() {
-  const response = await fetch("data/players.json", { cache: "no-store" });
+  const response = await fetch(versionedDataPath("data/players.json"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Could not load data/players.json");
@@ -80,7 +92,7 @@ async function loadPlayerData() {
 
 // Always request the newest rules so GitHub Pages does not show an older cached version.
 async function loadFantasyRules() {
-  const response = await fetch("data/fantasyRules.json", { cache: "no-store" });
+  const response = await fetch(versionedDataPath("data/fantasyRules.json"), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error("Could not load data/fantasyRules.json");
@@ -91,7 +103,7 @@ async function loadFantasyRules() {
 
 // Load one helper JSON file. Keeping this small makes adding extra data files easy.
 async function loadJsonFile(filePath) {
-  const response = await fetch(filePath, { cache: "no-store" });
+  const response = await fetch(versionedDataPath(filePath), { cache: "no-store" });
 
   if (!response.ok) {
     throw new Error(`Could not load ${filePath}`);
@@ -102,15 +114,7 @@ async function loadJsonFile(filePath) {
 
 // Load all helper data used by the recommendation engine.
 async function loadRecommendationData() {
-  [
-    allTeams,
-    allFixtures,
-    allMatchdays,
-    clubPerformance,
-    nationalTeamPerformance,
-    fixtureDifficulty,
-    scorePredictions
-  ] = await Promise.all([
+  const results = await Promise.allSettled([
     loadJsonFile("data/teams.json"),
     loadJsonFile("data/fixtures.json"),
     loadJsonFile("data/matchdays.json"),
@@ -119,6 +123,16 @@ async function loadRecommendationData() {
     loadJsonFile("data/fixtureDifficulty.json"),
     loadJsonFile("data/scorePredictions.json")
   ]);
+
+  [
+    allTeams,
+    allFixtures,
+    allMatchdays,
+    clubPerformance,
+    nationalTeamPerformance,
+    fixtureDifficulty,
+    scorePredictions
+  ] = results.map((result) => result.status === "fulfilled" ? result.value : []);
 
   dataMaps = buildDataMaps();
 }
@@ -588,7 +602,7 @@ function buildExportPlayer(player, choices) {
     club_data_quality: player.club_data_quality,
     national_team_data_quality: player.national_team_data_quality,
     recommendation_status: player.recommendation_status,
-    recommendation_score: Number(recommendation.total.toFixed(1)),
+    recommendation_score: recommendationScoreOutOf100(recommendation.total),
     recommendation_score_parts: roundScoreParts(recommendation.parts),
     next_fixture: nextFixture,
     club_performance: summarizeClubPerformanceRow(clubRow),
@@ -783,6 +797,18 @@ function getWordleStorageKey() {
   return `fantasyWordle:${getWordleDateKey()}`;
 }
 
+function getWordleStatusKey() {
+  return `fantasyWordleStatus:${getWordleDateKey()}`;
+}
+
+function getWordleStatus() {
+  return localStorage.getItem(getWordleStatusKey()) || "playing";
+}
+
+function saveWordleStatus(status) {
+  localStorage.setItem(getWordleStatusKey(), status);
+}
+
 function getSavedWordleGuessIds() {
   try {
     const savedGuesses = JSON.parse(localStorage.getItem(getWordleStorageKey()) || "[]");
@@ -800,11 +826,15 @@ function getDailyMysteryPlayer() {
   const officialPlayers = getOfficialPlayerPool(allPlayers)
     .slice()
     .sort((a, b) => getPlayerId(a).localeCompare(getPlayerId(b)));
-  const dateSeed = [...getWordleDateKey()].reduce((seed, character) => {
-    return ((seed * 31) + character.charCodeAt(0)) >>> 0;
-  }, 0);
+  const today = new Date();
+  const dayNumber = Math.floor(Date.UTC(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  ) / 86400000);
 
-  return officialPlayers[dateSeed % officialPlayers.length];
+  // Move to the next official player every local calendar day.
+  return officialPlayers[dayNumber % officialPlayers.length];
 }
 
 function setupFantasyWordle() {
@@ -822,8 +852,56 @@ function setupFantasyWordle() {
   showWordleHistory();
 }
 
+function getOfficialScoringFallback() {
+  return {
+    all_players: [
+      { action: "Appearance up to 60 minutes", points: 1 },
+      { action: "Appearance of 60 minutes or more", points: 2, note: "Includes the first appearance point." },
+      { action: "Assist", points: 3 },
+      { action: "Yellow card", points: -1 },
+      { action: "Red card", points: -2 },
+      { action: "Own goal", points: -2 },
+      { action: "Winning a penalty", points: 2 },
+      { action: "Conceding a penalty", points: -1 }
+    ],
+    position_specific_point_values: {
+      GK: [
+        { action: "Clean sheet after 60+ minutes", points: 5 },
+        { action: "First goal conceded", points: 0 },
+        { action: "Each additional goal conceded", points: -1 },
+        { action: "Goal scored", points: 9 },
+        { action: "Penalty save, excluding shootouts", points: 3 },
+        { action: "Every 3 saves", points: 1 }
+      ],
+      DEF: [
+        { action: "Clean sheet after 60+ minutes", points: 5 },
+        { action: "First goal conceded", points: 0 },
+        { action: "Each additional goal conceded", points: -1 },
+        { action: "Goal scored", points: 7 }
+      ],
+      MID: [
+        { action: "Clean sheet after 60+ minutes", points: 1 },
+        { action: "Goal scored", points: 6 },
+        { action: "Every 3 tackles", points: 1 },
+        { action: "Every 2 chances created", points: 1 }
+      ],
+      FWD: [
+        { action: "Goal scored", points: 5 },
+        { action: "Every 2 shots on target", points: 1 }
+      ]
+    },
+    bonus_points: [
+      { action: "Goal scored from a direct free-kick", points: 1, note: "Added on top of the normal goal points." },
+      { action: "Scouting bonus", points: 2, note: "For more than 4 match points while selected by fewer than 5% of teams." }
+    ]
+  };
+}
+
 function showScoringRules() {
-  const scoring = fantasyRules.scoring;
+  const loadedScoring = fantasyRules?.scoring;
+  const scoring = loadedScoring?.all_players && loadedScoring?.position_specific_point_values
+    ? loadedScoring
+    : getOfficialScoringFallback();
   const positionLabels = {
     GK: "Goalkeepers",
     DEF: "Defenders",
@@ -862,9 +940,9 @@ function createWordleGuessCard(guessedPlayer, mysteryPlayer) {
   const sameTeam = guessedPlayer.country === mysteryPlayer.country;
   const guessedPrice = getPlayerPrice(guessedPlayer);
   const mysteryPrice = getPlayerPrice(mysteryPlayer);
-  const guessedScore = Math.round(playerScore(guessedPlayer, getNeutralChoices()));
-  const mysteryScore = Math.round(playerScore(mysteryPlayer, getNeutralChoices()));
   const solved = getPlayerId(guessedPlayer) === getPlayerId(mysteryPlayer);
+  const guessedContinent = getPlayerContinent(guessedPlayer);
+  const mysteryContinent = getPlayerContinent(mysteryPlayer);
 
   return `
     <article class="wordle-card ${solved ? "solved" : ""}">
@@ -872,8 +950,8 @@ function createWordleGuessCard(guessedPlayer, mysteryPlayer) {
       <div class="wordle-hints">
         <span>Position: ${samePosition ? "same" : "different"}</span>
         <span>Team: ${sameTeam ? "same" : "different"}</span>
+        <span>Continent: ${guessedContinent} (${guessedContinent === mysteryContinent ? "same" : "different"})</span>
         <span>Price: ${guessedPrice === mysteryPrice ? "same" : guessedPrice < mysteryPrice ? "more expensive" : "less expensive"}</span>
-        <span>Helper score: ${guessedScore === mysteryScore ? "same" : guessedScore < mysteryScore ? "higher" : "lower"}</span>
       </div>
       <p>${solved ? `Solved. Today's player is ${mysteryPlayer.name}.` : "Keep guessing."}</p>
     </article>
@@ -886,14 +964,33 @@ function showWordleHistory(message = "") {
   const guesses = getSavedWordleGuessIds()
     .map((playerId) => officialPlayers.find((player) => getPlayerId(player) === playerId))
     .filter(Boolean);
+  const solved = guesses.some((player) => getPlayerId(player) === getPlayerId(mysteryPlayer));
+  const status = solved ? "solved" : getWordleStatus();
+  const guessesUsed = Math.min(guesses.length, WORDLE_MAX_GUESSES);
+  const gameFinished = status !== "playing" || guessesUsed >= WORDLE_MAX_GUESSES;
+
+  if (solved && getWordleStatus() !== "solved") saveWordleStatus("solved");
+  if (!solved && guessesUsed >= WORDLE_MAX_GUESSES && status === "playing") saveWordleStatus("out_of_guesses");
+
+  wordleGuessCounter.textContent = `${guessesUsed} of ${WORDLE_MAX_GUESSES} guesses used`;
+  wordleGuessInput.disabled = gameFinished;
+  guessPlayerButton.disabled = gameFinished;
+  giveUpWordleButton.disabled = gameFinished;
+
+  const finalStatus = solved ? "solved" : getWordleStatus();
+  const finishMessage = finalStatus === "gave_up"
+    ? `You gave up. Today's player is ${mysteryPlayer.name}.`
+    : finalStatus === "out_of_guesses"
+      ? `No guesses left. Today's player is ${mysteryPlayer.name}.`
+      : "";
 
   if (guesses.length === 0) {
-    wordleResult.innerHTML = `<p class="poll-note">${message || "Guess a player to reveal hints."}</p>`;
+    wordleResult.innerHTML = `<p class="poll-note">${finishMessage || message || "Guess a player to reveal hints."}</p>`;
     return;
   }
 
   wordleResult.innerHTML = `
-    ${message ? `<p class="poll-note">${message}</p>` : ""}
+    ${finishMessage || message ? `<p class="poll-note">${finishMessage || message}</p>` : ""}
     <div class="wordle-history">
       ${guesses.map((player) => createWordleGuessCard(player, mysteryPlayer)).join("")}
     </div>
@@ -901,6 +998,10 @@ function showWordleHistory(message = "") {
 }
 
 function makeWordleGuess() {
+  if (getWordleStatus() !== "playing" || getSavedWordleGuessIds().length >= WORDLE_MAX_GUESSES) {
+    showWordleHistory();
+    return;
+  }
   const guessName = wordleGuessInput.value.trim().toLowerCase();
   const officialPlayers = getOfficialPlayerPool(allPlayers);
   const guessedPlayer = officialPlayers.find((player) => player.name.toLowerCase() === guessName)
@@ -921,8 +1022,32 @@ function makeWordleGuess() {
 
   savedGuessIds.push(guessedPlayerId);
   saveWordleGuessIds(savedGuessIds);
+  if (guessedPlayerId === getPlayerId(getDailyMysteryPlayer())) saveWordleStatus("solved");
   wordleGuessInput.value = "";
   showWordleHistory();
+}
+
+function giveUpFantasyWordle() {
+  if (getWordleStatus() !== "playing") return;
+
+  saveWordleStatus("gave_up");
+  showWordleHistory();
+}
+
+function getPlayerContinent(player) {
+  const code = player.team_id || player.country;
+  const northAmerica = new Set(["CAN", "CRC", "CUW", "HAI", "JAM", "MEX", "PAN", "USA"]);
+  const southAmerica = new Set(["ARG", "BRA", "COL", "ECU", "PAR", "URU"]);
+  const africa = new Set(["ALG", "CIV", "COD", "EGY", "GHA", "MAR", "RSA", "SEN", "TUN", "CPV"]);
+  const asia = new Set(["IRN", "IRQ", "JPN", "JOR", "KOR", "KSA", "QAT", "UZB"]);
+  const oceania = new Set(["AUS", "NZL"]);
+
+  if (northAmerica.has(code)) return "North America";
+  if (southAmerica.has(code)) return "South America";
+  if (africa.has(code)) return "Africa";
+  if (asia.has(code)) return "Asia";
+  if (oceania.has(code)) return "Oceania";
+  return "Europe";
 }
 
 function averageScore(players, getScore) {
@@ -957,7 +1082,7 @@ function getRecommendationExplanation(squad, choices, ruleChecks, captainPick) {
     .slice(0, 5)
     .map((player) => ({
       name: player.name,
-      recommendation_score: Number(playerScore(player, choices).toFixed(1)),
+      recommendation_score: getPlayerRecommendationOutOf100(player, choices),
       reason: getPlayerReason(player),
       fixture: getNextFixtureContext(player)
     }));
@@ -979,7 +1104,7 @@ function getPlayerPickReasons(player) {
   const context = getNextFixtureContext(player);
   const reasons = [
     `Official fantasy player with position ${getPlayerPosition(player)} and price ${getPlayerPrice(player)}.`,
-    `Recommendation score: ${Math.round(recommendation.total)} from price, fixture context, team strength, and playing profile.`
+    `Recommendation score: ${recommendationScoreOutOf100(recommendation.total)}/100 from price, opponent context, team strength, and playing profile.`
   ];
 
   if (context) {
@@ -1191,15 +1316,45 @@ function getNeutralChoices() {
 
 // Sort players using the Week 6 recommendation score.
 function pickBestPlayers(players, amount, choices = getUserChoices()) {
-  return players
+  const sortedPlayers = players
     .slice()
-    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices))
-    .slice(0, amount);
+    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices));
+
+  if (choices.teamStyle !== "underdog") return sortedPlayers.slice(0, amount);
+
+  const countryCounts = {};
+
+  return sortedPlayers.filter((player) => {
+    const country = player.country || "needs_check";
+    if ((countryCounts[country] || 0) >= 2) return false;
+    countryCounts[country] = (countryCounts[country] || 0) + 1;
+    return true;
+  }).slice(0, amount);
+}
+
+function getUnderdogReason(player) {
+  const fixture = getNextFixtureContext(player);
+  const fixtureText = fixture
+    ? `${fixture.difficulty} matchup against ${fixture.opponent}`
+    : "potential value despite limited fixture context";
+  const article = fixture && /^[aeiou]/i.test(fixture.difficulty) ? "an" : "a";
+
+  return fixture
+    ? `Surprise option at ${getPlayerPrice(player)}m with ${article} ${fixtureText}.`
+    : `Surprise option at ${getPlayerPrice(player)}m with ${fixtureText}.`;
 }
 
 // Score a player by combining official fantasy info, player form, fixtures, and data risk.
 function playerScore(player, choices) {
   return getRecommendationScore(player, choices).total;
+}
+
+function recommendationScoreOutOf100(score) {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getPlayerRecommendationOutOf100(player, choices = getUserChoices()) {
+  return recommendationScoreOutOf100(playerScore(player, choices));
 }
 
 // Use confirmed FIFA scoring categories where matching player data exists.
@@ -1218,6 +1373,10 @@ function getRecommendationScore(player, choices = getUserChoices()) {
     - parts.risk_penalty
     - parts.data_quality_penalty;
 
+  if (choices.teamStyle === "underdog") {
+    total += getUnderdogSurpriseAdjustment(player);
+  }
+
   if (choices.favoriteCountry && String(player.country).toLowerCase() === choices.favoriteCountry) {
     total += 12;
   }
@@ -1226,6 +1385,23 @@ function getRecommendationScore(player, choices = getUserChoices()) {
     total,
     parts
   };
+}
+
+// Underdog mode should surface plausible surprise picks, not premium stars.
+function getUnderdogSurpriseAdjustment(player) {
+  const price = getPlayerPrice(player);
+  const team = dataMaps.teamById?.get(player.team_id);
+  const fifaRanking = Number(team?.fifa_ranking || 50);
+  const fixture = getNextFixtureContext(player);
+  const affordableBonus = Math.max(0, 7 - price) * 7;
+  const premiumPenalty = Math.max(0, price - 7) * 15;
+  const eliteNationPenalty = fifaRanking <= 10 ? (11 - fifaRanking) * 3 : 0;
+  const outsiderBonus = fifaRanking >= 20 && fifaRanking <= 55 ? 10 : 0;
+  const fixtureUpside = fixture && ["easy", "favorable"].includes(fixture.difficulty)
+    ? Math.max(5, (Number(fixture.expected_goals_for || 1.35) - 1.1) * 10)
+    : 0;
+
+  return affordableBonus + outsiderBonus + fixtureUpside - premiumPenalty - eliteNationPenalty;
 }
 
 function getRecommendationParts(player, choices) {
@@ -1394,13 +1570,7 @@ function getTeamStrengthBoost(player, weights) {
 }
 
 function getRiskPenalty(player, weights) {
-  const risk = getPlayerRiskScore(player) * 0.2 * weights.risk;
-  const clubRow = getClubPerformance(player);
-  const nationalRow = getNationalPerformance(player);
-  const lowMinutesRisk = clubRow && clubRow.minutes !== null && Number(clubRow.minutes) < 450 ? 6 * weights.risk : 0;
-  const uncertainStarterRisk = (!clubRow?.starts && !nationalRow?.starts) ? 4 * weights.risk : 0;
-
-  return risk + lowMinutesRisk + uncertainStarterRisk;
+  return getPlayerRiskScore(player) * 0.2 * weights.risk;
 }
 
 function getDataQualityPenalty(player, weights) {
@@ -1513,10 +1683,28 @@ function getPlayerDefenseScore(player) {
 
 function getPlayerRiskScore(player) {
   if (player.risk_score !== undefined) return Number(player.risk_score);
-  if (player.recommendation_status === "eligible") return 15;
-  if (player.recommendation_status === "caution") return 35;
-  if (player.recommendation_status === "limited") return 60;
-  return 80;
+  const clubRow = getClubPerformance(player);
+  const nationalRow = getNationalPerformance(player);
+  let risk = 10;
+
+  // Use official availability first, then verified performance records where present.
+  if (player.selectable_status && player.selectable_status !== "playing") risk += 55;
+  if (player.roster_status && player.roster_status !== "official_fantasy_pool") risk += 55;
+
+  if (!clubRow && !nationalRow) risk += 20;
+  if (clubRow?.minutes !== null && clubRow?.minutes !== undefined && Number(clubRow.minutes) < 450) risk += 15;
+  if (nationalRow?.minutes !== null && nationalRow?.minutes !== undefined && Number(nationalRow.minutes) < 180) risk += 10;
+
+  const hasStarts = [clubRow?.starts, nationalRow?.starts].some((starts) => starts !== null && starts !== undefined);
+  if (!hasStarts) risk += 10;
+  if (clubRow?.starts !== null && clubRow?.starts !== undefined && Number(clubRow.starts) < 3) risk += 10;
+  if (nationalRow?.starts !== null && nationalRow?.starts !== undefined && Number(nationalRow.starts) < 2) risk += 5;
+
+  const yellowCards = Number(clubRow?.yellow_cards || 0) + Number(nationalRow?.yellow_cards || 0);
+  const redCards = Number(clubRow?.red_cards || 0) + Number(nationalRow?.red_cards || 0);
+  risk += Math.min(5, yellowCards * 0.5) + Math.min(16, redCards * 8);
+
+  return Math.max(0, Math.min(100, risk));
 }
 
 // Fill country filter dropdowns from the loaded player data
@@ -1610,10 +1798,10 @@ function showSuggestions(players) {
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation score:</strong> ${Math.round(recommendation.total)}</p>
-        <p><strong>Fixture:</strong> ${Math.round(parts.fixture_boost)} | <strong>Risk penalty:</strong> ${Math.round(parts.risk_penalty)}</p>
+        <p><strong>Recommendation score:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
+        <p><strong>Risk deduction:</strong> ${Math.round(parts.risk_penalty)} points</p>
         <p>${getFixtureContextText(player)}</p>
-        <p class="advice-reason">${getPlayerReason(player)}</p>
+        <p class="advice-reason">${choices.teamStyle === "underdog" ? getUnderdogReason(player) : getPlayerReason(player)}</p>
       </div>
     `;
 
@@ -1655,7 +1843,7 @@ function showCaptains(players) {
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation:</strong> ${Math.round(recommendation.total)}</p>
+        <p><strong>Recommendation:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
         <p><strong>Next fixture:</strong> ${firstFixture ? `${firstFixture.difficulty}, xG ${firstFixture.expected_goals_for}` : "needs_check"}</p>
       </div>
       <p class="captain-reason">${getPlayerReason(player)}</p>
@@ -1716,7 +1904,6 @@ function showTeam(players) {
 
   formationSummary.innerHTML = `
     <strong>Formation used:</strong> ${formationUsed}
-    <span>Built from the allowed formations in data/fantasyRules.json.</span>
   `;
 
   captainSummary.innerHTML = `
@@ -1728,7 +1915,7 @@ function showTeam(players) {
   squad.forEach((player, index) => {
     const item = document.createElement("article");
     item.className = "squad-list-item";
-    const score = Math.round(playerScore(player, getUserChoices()));
+    const score = getPlayerRecommendationOutOf100(player);
     item.innerHTML = `
       <strong>#${index + 1} ${player.name}</strong>
       <span>${player.country} | ${getPlayerPosition(player)} | ${getPlayerPrice(player)} | score ${score}</span>
@@ -1749,7 +1936,7 @@ function showTeam(players) {
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation:</strong> ${Math.round(playerScore(player, getUserChoices()))}</p>
+        <p><strong>Recommendation:</strong> ${getPlayerRecommendationOutOf100(player)}/100</p>
         <p><strong>Next:</strong> ${getFixtureContextText(player).replace("Next opponent: ", "")}</p>
         <p class="reason">${getPlayerReason(player)}</p>
       </div>
@@ -1775,7 +1962,7 @@ function createSimplePlayerToken(player, number) {
     <div class="player-details">
       <p><strong>Country:</strong> ${player.country}</p>
       <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-      <p><strong>Recommendation:</strong> ${Math.round(playerScore(player, getUserChoices()))}</p>
+      <p><strong>Recommendation:</strong> ${getPlayerRecommendationOutOf100(player)}/100</p>
       <p><strong>Next:</strong> ${getFixtureContextText(player).replace("Next opponent: ", "")}</p>
     </div>
   `;
@@ -1798,15 +1985,56 @@ function showOutlook(players) {
     .slice()
     .map((team) => getCountryOutlook(team, players))
     .sort((a, b) => b.totalScore - a.totalScore)
-    .slice(0, 12)
-    .map((outlookRow) => ({
-      label: "Country Outlook",
-      title: outlookRow.country,
-      text: `Group ${outlookRow.group}. The outlook emphasizes FIFA ranking, then adds squad strength, qualifying production, and player depth.`,
-      rating: `Score ${outlookRow.totalScore}/100 | FIFA rank ${outlookRow.fifaRanking} | Squad ${outlookRow.playerScore} | Qualifying ${outlookRow.qualifyingScore} | Depth ${outlookRow.depthScore}`
-    }));
+    .slice(0, 12);
+  const container = document.querySelector("#outlookList");
 
-  showCards(outlook, "outlookList");
+  container.innerHTML = "";
+
+  outlook.forEach((outlookRow) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "info-card outlook-card";
+    card.innerHTML = `
+      <p class="card-label">Country Outlook</p>
+      <h3 class="card-title">${outlookRow.country}</h3>
+      <p class="card-text">Group ${outlookRow.group}. FIFA ranking leads the outlook, supported by squad and qualifying scores.</p>
+      <p class="rating">Score ${outlookRow.totalScore}/100 | FIFA rank ${outlookRow.fifaRanking}</p>
+      <span class="outlook-action">View score explanation</span>
+    `;
+    card.addEventListener("click", () => showCountryDetails(outlookRow));
+    container.appendChild(card);
+  });
+}
+
+function showCountryDetails(outlook) {
+  countryDetailTitle.textContent = outlook.country;
+  countryDetailContent.innerHTML = `
+    <div class="country-score-hero">
+      <div><span>Outlook score</span><strong>${outlook.totalScore}/100</strong></div>
+      <p>Group ${outlook.group}. This is a comparison score for the website, not an official FIFA rating or a guarantee of tournament progress.</p>
+    </div>
+    <div class="player-detail-grid country-metric-grid">
+      <article class="detail-card">
+        <h4>FIFA Rank: ${outlook.fifaRanking}</h4>
+        <p><strong>Model score:</strong> ${outlook.rankingScore}/100</p>
+        <p>This measures the country's official FIFA ranking. A lower rank number produces a higher model score and contributes 60% of the total outlook.</p>
+      </article>
+      <article class="detail-card">
+        <h4>Squad Score: ${outlook.playerScore}/100</h4>
+        <p>This averages the website recommendation scores of up to eight leading players from the country's fantasy pool. It contributes 25%.</p>
+      </article>
+      <article class="detail-card">
+        <h4>Qualifying Score: ${outlook.qualifyingScore}/100</h4>
+        <p>This uses matched national-team qualifying appearances, goals, and assists. It contributes 15%. Countries with limited matched statistics receive a neutral score.</p>
+      </article>
+    </div>
+    <article class="detail-card outlook-formula">
+      <h4>How the overall score is calculated</h4>
+      <p>60% FIFA ranking + 25% squad score + 15% qualifying score.</p>
+      <p>${outlook.country} has ${outlook.qualifyingRows} matched qualifying-stat records in the current model.</p>
+    </article>
+  `;
+  countryDetailPanel.classList.remove("hidden");
 }
 
 function getCountryOutlook(team, players) {
@@ -1820,7 +2048,6 @@ function getCountryOutlook(team, players) {
   const fifaRanking = Number(team.fifa_ranking || 100);
   const rankingScore = clampRating(102 - fifaRanking * 3);
   const playerScorePart = clampRating(averageScore(topPlayers, (player) => playerScore(player, neutralChoices)));
-  const depthScore = clampRating(Math.min(countryPlayers.length, 26) / 26 * 100);
   const qualifyingProduction = nationalRows.reduce((sum, row) => {
     return sum + Number(row.goals || 0) * 5 + Number(row.assists || 0) * 3 + Number(row.appearances || 0);
   }, 0);
@@ -1829,9 +2056,8 @@ function getCountryOutlook(team, players) {
     : 40;
   const totalScore = clampRating(
     rankingScore * 0.6
-    + playerScorePart * 0.2
+    + playerScorePart * 0.25
     + qualifyingScore * 0.15
-    + depthScore * 0.05
   );
 
   return {
@@ -1841,8 +2067,8 @@ function getCountryOutlook(team, players) {
     totalScore,
     rankingScore,
     playerScore: playerScorePart,
-    depthScore,
-    qualifyingScore
+    qualifyingScore,
+    qualifyingRows: nationalRows.length
   };
 }
 
@@ -1875,7 +2101,7 @@ function showPlayerPool(players) {
     card.innerHTML = `
       <h3>${player.name}</h3>
       <p>${player.country} | ${getPlayerPosition(player)}</p>
-      <p>Official price: ${getPlayerPrice(player)} | Score: ${Math.round(playerScore(player, getNeutralChoices()))}</p>
+      <p>Official price: ${getPlayerPrice(player)} | Score: ${getPlayerRecommendationOutOf100(player, getNeutralChoices())}/100</p>
       <p>${getFixtureContextText(player)}</p>
       <p class="pool-action">View full player details</p>
     `;
@@ -1903,9 +2129,9 @@ function showPlayerDetails(player) {
       </article>
       <article class="detail-card">
         <h4>Recommendation Score</h4>
-        <p><strong>Total:</strong> ${Math.round(recommendation.total)}</p>
+        <p><strong>Total:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
         <p><strong>Fixture boost:</strong> ${Math.round(parts.fixture_boost)}</p>
-        <p><strong>Risk penalty:</strong> ${Math.round(parts.risk_penalty)}</p>
+        <p><strong>Risk deduction:</strong> ${Math.round(parts.risk_penalty)} points</p>
       </article>
     </div>
     <div class="detail-split">
@@ -2291,7 +2517,7 @@ function createSlotToken(slot, player, number) {
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation:</strong> ${Math.round(playerScore(player, getNeutralChoices()))}</p>
+        <p><strong>Recommendation:</strong> ${getPlayerRecommendationOutOf100(player, getNeutralChoices())}/100</p>
       </div>
     `;
   } else {
@@ -2395,7 +2621,7 @@ function renderPlayerSelection(players) {
       card.innerHTML = `
         <h3>${player.name}</h3>
         <p>${player.country} | ${getPlayerPosition(player)}</p>
-        <p>Official price: ${getPlayerPrice(player)} | Score: ${Math.round(playerScore(player, getNeutralChoices()))}</p>
+        <p>Official price: ${getPlayerPrice(player)} | Score: ${getPlayerRecommendationOutOf100(player, getNeutralChoices())}/100</p>
       `;
 
       card.addEventListener("click", () => {
@@ -2420,11 +2646,21 @@ function showLoadError() {
   showCards([
     {
       label: "Error",
-      title: "The data files did not load",
-      text: "Run the site with a local server so the browser can load the JSON files in the data folder.",
-      rating: "Try: python3 -m http.server 8000"
+      title: "The player database could not load",
+      text: window.location.protocol === "file:"
+        ? "Open the website through its local server instead of opening index.html directly."
+        : "Refresh the page. If the problem continues, the player file may still be updating.",
+      rating: window.location.protocol === "file:" ? "Try: python3 -m http.server 8000" : "Please try again"
     }
   ], "suggestionList");
+}
+
+function renderSafely(label, renderFunction) {
+  try {
+    renderFunction();
+  } catch (error) {
+    console.error(`${label} could not render:`, error);
+  }
 }
 
 // Switch tabs when a tab button is clicked
@@ -2477,16 +2713,16 @@ async function startWebsite() {
     setupFixtureFilters();
     setupFormationOptions();
 
-    showSuggestions(allPlayers);
-    showCaptains(allPlayers);
-    showTeam(allPlayers);
-    showCustomBuilder(allPlayers);
-    showPlayerPool(allPlayers);
-    showFixturesTab();
-    setupFantasyWordle();
-    showScoringRules();
-    showGroups();
-    showOutlook(allPlayers);
+    renderSafely("Player Picks", () => showSuggestions(allPlayers));
+    renderSafely("Captain Picks", () => showCaptains(allPlayers));
+    renderSafely("My XI", () => showTeam(allPlayers));
+    renderSafely("Create XI", () => showCustomBuilder(allPlayers));
+    renderSafely("Player Pool", () => showPlayerPool(allPlayers));
+    renderSafely("Fixtures", showFixturesTab);
+    renderSafely("Fantasy Wordle", setupFantasyWordle);
+    renderSafely("Scoring Rules", showScoringRules);
+    renderSafely("Groups", showGroups);
+    renderSafely("Country Outlook", () => showOutlook(allPlayers));
   } catch (error) {
     console.error("Website startup failed:", error);
     showLoadError();
@@ -2517,6 +2753,12 @@ guessPlayerButton.addEventListener("click", () => {
   if (allPlayers.length === 0) return;
 
   makeWordleGuess();
+});
+
+giveUpWordleButton.addEventListener("click", () => {
+  if (allPlayers.length === 0) return;
+
+  giveUpFantasyWordle();
 });
 
 wordleGuessInput.addEventListener("keydown", (event) => {
@@ -2622,6 +2864,10 @@ closePlayerDetailButton.addEventListener("click", () => {
   playerDetailPanel.classList.add("hidden");
 });
 
+closeCountryDetailButton.addEventListener("click", () => {
+  countryDetailPanel.classList.add("hidden");
+});
+
 customSelectionPanel.addEventListener("click", (event) => {
   if (event.target !== customSelectionPanel) return;
 
@@ -2633,6 +2879,12 @@ playerDetailPanel.addEventListener("click", (event) => {
   if (event.target !== playerDetailPanel) return;
 
   playerDetailPanel.classList.add("hidden");
+});
+
+countryDetailPanel.addEventListener("click", (event) => {
+  if (event.target !== countryDetailPanel) return;
+
+  countryDetailPanel.classList.add("hidden");
 });
 
 // Download the current generated team as a JSON file

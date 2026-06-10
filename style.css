@@ -518,6 +518,23 @@ h1 {
   transform: translateY(-2px);
 }
 
+.outlook-card {
+  appearance: none;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.outlook-action {
+  display: inline-block;
+  margin-top: 14px;
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .card-label {
   display: inline-block;
   margin: 0 0 18px;
@@ -551,6 +568,21 @@ h1 {
 }
 
 /* Shared filter controls */
+.risk-model-note {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  color: #dedee4;
+  background: #1b1b22;
+  border-left: 4px solid #e30613;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.risk-model-note strong {
+  color: white;
+}
+
 .filter-toggle {
   margin: 0 0 12px;
   border: 1px solid #4a4a54;
@@ -1178,6 +1210,46 @@ h1 {
   border-left: 4px solid #e30613;
 }
 
+.country-score-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 16px;
+  background: #241116;
+  border-left: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.country-score-hero div {
+  display: grid;
+  gap: 4px;
+}
+
+.country-score-hero span,
+.country-score-hero p {
+  color: #c9c9d1;
+}
+
+.country-score-hero strong {
+  color: white;
+  font-size: 32px;
+}
+
+.country-score-hero p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.country-metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.outlook-formula {
+  border-left: 4px solid white;
+}
+
 /* Data and fixture panels */
 .data-freshness {
   display: grid;
@@ -1400,10 +1472,23 @@ h1 {
 
 .wordle-box {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 16px;
+}
+
+.wordle-counter {
+  margin: -6px 0 14px;
+  color: #c9c9d1;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wordle-box button:disabled,
+.wordle-box input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .wordle-box label {
@@ -1847,6 +1932,11 @@ h1 {
   }
 
   .wordle-box {
+    grid-template-columns: 1fr;
+  }
+
+  .country-score-hero,
+  .country-metric-grid {
     grid-template-columns: 1fr;
   }
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>World Cup Fantasy Team Helper</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260610g">
 </head>
 <body>
   <!-- Simple app header -->
@@ -145,6 +145,7 @@
 
       <!-- Player picks tab -->
       <div id="suggestions" class="tab-panel active">
+        <p class="risk-model-note"><strong>Risk deduction:</strong> A model estimate based on official player availability and available starts, minutes, and card records. Missing records add uncertainty; this is not an official FIFA score.</p>
         <button class="filter-toggle" data-filter-target="picksFilters">Filters</button>
         <div id="picksFilters" class="filter-tools hidden">
           <label>
@@ -353,7 +354,9 @@
           </label>
           <datalist id="playerGuessOptions"></datalist>
           <button id="guessPlayerButton" class="primary-button" type="button">Guess</button>
+          <button id="giveUpWordleButton" class="secondary-button" type="button">Give Up</button>
         </div>
+        <p id="wordleGuessCounter" class="wordle-counter"></p>
         <div id="wordleResult" class="wordle-result"></div>
       </div>
 
@@ -376,9 +379,23 @@
         <div id="outlookList" class="card-grid"></div>
       </div>
 
+      <!-- Country outlook explanation popup -->
+      <div id="countryDetailPanel" class="selection-overlay hidden">
+        <div class="selection-panel detail-panel">
+          <div class="selection-heading">
+            <div>
+              <p class="eyebrow">Country Outlook</p>
+              <h3 id="countryDetailTitle">Country</h3>
+            </div>
+            <button id="closeCountryDetailButton" class="small-button" type="button">Close</button>
+          </div>
+          <div id="countryDetailContent"></div>
+        </div>
+      </div>
+
     </section>
   </main>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=20260610g"></script>
 </body>
 </html>
