@@ -262,35 +262,23 @@ The following rules are confirmed from visible FIFA sources:
 - An extra `$5m` budget is added for the knockout stage.
 - Player prices do not fluctuate during the tournament.
 - The group stage starts with a maximum of 3 players from the same nation.
-- Nation limits change during the tournament, but the exact later-round limits need checking from the official help page.
+- Nation limits are 3 in the group stage and Round of 32, then 4, 5, 6, and 8 through the Round of 16, quarter-finals, semi-finals, and final.
 - Unlimited changes are allowed until the first FIFA World Cup match on Thursday, 11 June.
 - Unlimited transfers are available before Matchday 1 and before the Round of 32.
-- Other stages have transfer limits, but the exact limits need checking.
+- Free transfers are 2 before Matchdays 2 and 3, 4 before the Round of 16 and quarter-finals, 5 before the semi-finals, and 6 before the final.
+- Extra transfers cost 3 points each, and one unused transfer can roll over during the group stage.
 - Users can make bench substitutions during each Matchday.
 - Users can switch captains during each Matchday.
 - Five boosters are available: Wildcard, 12th Man, Maximum Captain, Qualification Booster, and Mystery Booster.
 - Mystery Booster will be revealed ahead of the Round of 32.
-- Scoring is based on minutes played, goals scored/conceded, assists, cards, own goals, penalties won/conceded, tackles, chances created, and shots on target.
-- Direct free-kick goals and scouting bonus can earn additional points.
+- Exact scoring values are confirmed for appearances, goals by position, assists, clean sheets, goals conceded, cards, own goals, penalties, saves, tackles, chances created, and shots on target.
+- Direct free-kick goals earn +1 and the scouting bonus earns +2.
+- The official starting XI, seven allowed formations, captain multiplier, vice-captain, and automatic substitution rules are confirmed.
 
 ## Rules Marked As Needs Check
 
 The following rules were not clear enough from visible official source text:
 
-- exact max players per nation for Round of 32
-- exact max players per nation for Round of 16
-- exact max players per nation for quarter-finals
-- exact max players per nation for semi-finals
-- exact max players per nation for the final
-- exact number of free transfers by round after Matchday 1
-- whether extra transfers cost points, and how many
-- whether transfers can roll over
-- exact booster mechanics
-- whether only one booster can be active at a time
-- exact scoring point values
-- exact starting lineup and formation rules
-- vice-captain rules
-- automatic substitution rules
 - deadline time zone
 - whether the official player pool has finished updating after the 2 June final squad confirmation date
 

@@ -103,7 +103,7 @@
       </div>
 
       <!-- User choices for how the team should be built -->
-      <div class="choice-panel">
+      <div id="strategyControls" class="choice-panel">
         <label>
           Team style
           <select id="teamStyle">
@@ -129,12 +129,6 @@
         </label>
       </div>
 
-      <!-- Clear prototype notes for data and draft rules -->
-      <div class="site-notes" aria-label="Important site notes">
-        <p>This site uses official FIFA Fantasy player rows and official FIFA Fantasy rules where they are visible. Rules marked needs_check are still being verified.</p>
-        <p>Prediction and helper scores are clearly marked where they are not official FIFA Fantasy data.</p>
-      </div>
-
       <!-- Tab buttons switch between each helper view -->
       <div class="tabs">
         <button class="tab-button active" data-tab="suggestions">Player Picks</button>
@@ -144,7 +138,7 @@
         <button class="tab-button" data-tab="pool">Player Pool</button>
         <button class="tab-button" data-tab="fixtures">Fixtures</button>
         <button class="tab-button" data-tab="wordle">Fantasy Wordle</button>
-        <button class="tab-button" data-tab="ratingTool">Team Rating</button>
+        <button class="tab-button" data-tab="scoringRules">Scoring Rules</button>
         <button class="tab-button" data-tab="groups">Groups</button>
         <button class="tab-button" data-tab="outlook">Country Outlook</button>
       </div>
@@ -350,7 +344,7 @@
       <div id="wordle" class="tab-panel">
         <div class="data-freshness">
           <strong>Fantasy Wordle</strong>
-          <span>Guess the mystery fantasy player. Hints compare your guess with today's player.</span>
+          <span>Guess the mystery fantasy player. A new player appears every day, and today's guesses are saved on this device.</span>
         </div>
         <div class="wordle-box">
           <label>
@@ -363,14 +357,13 @@
         <div id="wordleResult" class="wordle-result"></div>
       </div>
 
-      <!-- Team rating tool tab -->
-      <div id="ratingTool" class="tab-panel">
+      <!-- Official FIFA Fantasy scoring rules -->
+      <div id="scoringRules" class="tab-panel">
         <div class="data-freshness">
-          <strong>Team Rating Tool</strong>
-          <span>Build a team in Create XI, then come here to grade it. If you have not made a custom team yet, this uses the generated squad.</span>
+          <strong>Official Fantasy Scoring</strong>
+          <span>Compare how goalkeepers, defenders, midfielders, and forwards earn points.</span>
         </div>
-        <button id="refreshTeamRatingButton" class="primary-button" type="button">Refresh Rating</button>
-        <div id="teamRatingOutput" class="team-rating-output"></div>
+        <div id="scoringRulesContent" class="scoring-rules-grid"></div>
       </div>
 
       <!-- Groups tab -->

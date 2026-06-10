@@ -1,6 +1,6 @@
 {
-  "rules_version": "week_6_official_fifa_check_2026_06_04",
-  "rules_status": "Official FIFA Fantasy rules where confirmed from visible FIFA sources. Fields marked needs_check were not clearly visible in the checked official pages.",
+  "rules_version": "week_6_official_fifa_rules_2026_06_10",
+  "rules_status": "Official FIFA World Cup Fantasy 2026 rules from the FIFA How to Play guide. Only genuinely unrevealed or unclear fields remain needs_check.",
   "source_of_truth": "FIFA World Cup Fantasy",
   "sources": [
     {
@@ -71,8 +71,7 @@
   "starting_lineup": {
     "total_players": {
       "value": 11,
-      "status": "needs_check",
-      "note": "The official article confirms bench substitutions and captains, but the exact starting lineup rule was not clearly visible in the checked official 2026 pages."
+      "status": "official_confirmed"
     },
     "allowed_formations": {
       "value": [
@@ -84,8 +83,7 @@
         "5-3-2",
         "5-4-1"
       ],
-      "status": "needs_check",
-      "note": "These were already used in the Week 5 prototype, but the exact 2026 official formation list was not visible in the checked official pages."
+      "status": "official_confirmed"
     }
   },
   "budget": {
@@ -157,36 +155,35 @@
         "status": "official_confirmed"
       },
       "round_of_32": {
-        "max_players_per_nation": "needs_check",
-        "status": "needs_check"
+        "max_players_per_nation": 3,
+        "status": "official_confirmed"
       },
       "round_of_16": {
-        "max_players_per_nation": "needs_check",
-        "status": "needs_check"
+        "max_players_per_nation": 4,
+        "status": "official_confirmed"
       },
       "quarter_final": {
-        "max_players_per_nation": "needs_check",
-        "status": "needs_check"
+        "max_players_per_nation": 5,
+        "status": "official_confirmed"
       },
       "semi_final": {
-        "max_players_per_nation": "needs_check",
-        "status": "needs_check"
+        "max_players_per_nation": 6,
+        "status": "official_confirmed"
       },
       "final": {
-        "max_players_per_nation": "needs_check",
-        "status": "needs_check"
+        "max_players_per_nation": 8,
+        "status": "official_confirmed"
       }
     }
   },
   "captain": {
     "captain_points_multiplier": {
-      "value": "needs_check",
-      "status": "needs_check",
-      "note": "FIFA confirms users can switch captains during each Matchday, but the exact 2026 captain multiplier was not visible in the checked official 2026 pages."
+      "value": 2,
+      "status": "official_confirmed"
     },
     "captain_required": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": true,
+      "status": "official_confirmed"
     },
     "captain_switching": {
       "value": true,
@@ -194,8 +191,9 @@
       "note": "FIFA confirms users can switch captains during each Matchday."
     },
     "vice_captain": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": true,
+      "status": "official_confirmed",
+      "note": "The vice-captain receives double points if the captain plays zero minutes, provided no manual live-round changes were made."
     }
   },
   "substitutions": {
@@ -204,16 +202,16 @@
       "status": "official_confirmed"
     },
     "manual_substitution_details": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": "A completed starter can be replaced by a bench player who has not played, while preserving a valid formation. Manual live-round changes disable automatic substitutions.",
+      "status": "official_confirmed"
     },
     "automatic_substitutions": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": true,
+      "status": "official_confirmed"
     },
     "bench_order_rules": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": "Outfield substitutes are prioritized 1 to 3 and replace DNP starters when a valid formation can be maintained.",
+      "status": "official_confirmed"
     }
   },
   "transfers": {
@@ -226,45 +224,52 @@
       "status": "official_confirmed"
     },
     "limits_for_other_stages": {
-      "value": "needs_check",
-      "status": "needs_check",
-      "note": "FIFA confirms limits are in place for other stages, but the exact number of free transfers by round was not visible in the checked official pages."
+      "value": {
+        "before_matchday_2": 2,
+        "before_matchday_3": 2,
+        "before_round_of_16": 4,
+        "before_quarter_finals": 4,
+        "before_semi_finals": 5,
+        "before_final": 6
+      },
+      "status": "official_confirmed"
     },
     "extra_transfer_penalty": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": -3,
+      "unit": "points per additional transfer",
+      "status": "official_confirmed"
     },
     "rollover_transfers": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": "One unused transfer can roll into the next group-stage round only.",
+      "status": "official_confirmed"
     }
   },
   "boosters": {
-    "status": "official_confirmed_names_only",
+    "status": "official_confirmed",
     "one_booster_at_a_time": {
-      "value": "needs_check",
-      "status": "needs_check"
+      "value": true,
+      "status": "official_confirmed"
     },
     "available_boosters": [
       {
         "name": "Wildcard",
         "status": "official_confirmed",
-        "mechanics": "needs_check"
+        "mechanics": "Unlimited transfers within one eligible round. It cannot be used for the first group-stage match or the Round of 32, and cannot be reversed after confirmation."
       },
       {
         "name": "12th Man",
         "status": "official_confirmed",
-        "mechanics": "needs_check"
+        "mechanics": "Adds one scoring player for a round. The player cannot be substituted, captained, or transferred, and squad budget and nation limits do not apply."
       },
       {
         "name": "Maximum Captain",
         "status": "official_confirmed",
-        "mechanics": "needs_check"
+        "mechanics": "Automatically gives double points to the highest-scoring player in the starting XI."
       },
       {
         "name": "Qualification Booster",
         "status": "official_confirmed",
-        "mechanics": "needs_check"
+        "mechanics": "From the Round of 32 onward, gives +2 points to starting-XI players who play at least one minute and progress. The bonus is not doubled for captains."
       },
       {
         "name": "Mystery Booster",
@@ -295,38 +300,48 @@
     }
   },
   "scoring": {
-    "status": "official_confirmed_categories_only",
-    "point_values_status": "needs_check",
-    "categories_confirmed_by_fifa": [
-      "minutes played",
-      "goals scored",
-      "goals conceded",
-      "assists",
-      "cards received",
-      "own goals",
-      "winning a penalty",
-      "conceding a penalty",
-      "tackles",
-      "chances created",
-      "shots on target"
-    ],
-    "additional_scoring_confirmed_by_fifa": [
-      {
-        "name": "direct free-kick goal bonus",
-        "points": "needs_check"
-      },
-      {
-        "name": "scouting bonus",
-        "condition": "player scores more than four points in a match and is owned by fewer than 5% of all teams",
-        "points": "needs_check"
-      }
+    "status": "official_confirmed",
+    "point_values_status": "official_confirmed",
+    "all_players": [
+      { "action": "Appearance up to 60 minutes", "points": 1 },
+      { "action": "Appearance of 60 minutes or more", "points": 2, "note": "Includes the first appearance point." },
+      { "action": "Assist", "points": 3 },
+      { "action": "Yellow card", "points": -1 },
+      { "action": "Red card", "points": -2 },
+      { "action": "Own goal", "points": -2 },
+      { "action": "Winning a penalty", "points": 2 },
+      { "action": "Conceding a penalty", "points": -1 }
     ],
     "position_specific_point_values": {
-      "GK": "needs_check",
-      "DEF": "needs_check",
-      "MID": "needs_check",
-      "FWD": "needs_check"
-    }
+      "GK": [
+        { "action": "Clean sheet after 60+ minutes", "points": 5 },
+        { "action": "First goal conceded", "points": 0 },
+        { "action": "Each additional goal conceded", "points": -1 },
+        { "action": "Goal scored", "points": 9 },
+        { "action": "Penalty save, excluding shootouts", "points": 3 },
+        { "action": "Every 3 saves", "points": 1 }
+      ],
+      "DEF": [
+        { "action": "Clean sheet after 60+ minutes", "points": 5 },
+        { "action": "First goal conceded", "points": 0 },
+        { "action": "Each additional goal conceded", "points": -1 },
+        { "action": "Goal scored", "points": 7 }
+      ],
+      "MID": [
+        { "action": "Clean sheet after 60+ minutes", "points": 1 },
+        { "action": "Goal scored", "points": 6 },
+        { "action": "Every 3 tackles", "points": 1 },
+        { "action": "Every 2 chances created", "points": 1 }
+      ],
+      "FWD": [
+        { "action": "Goal scored", "points": 5 },
+        { "action": "Every 2 shots on target", "points": 1 }
+      ]
+    },
+    "bonus_points": [
+      { "action": "Goal scored from a direct free-kick", "points": 1, "note": "Added on top of the normal goal points." },
+      { "action": "Scouting bonus", "points": 2, "note": "Awarded when a player scores more than 4 points in a match and is selected by fewer than 5% of teams." }
+    ]
   },
   "important_limits_or_special_rules": {
     "player_pool_status": {
@@ -348,9 +363,9 @@
     "check_position_counts": true,
     "check_budget": true,
     "check_nation_limit": true,
-    "check_starting_11": "needs_check",
-    "check_captain": "needs_check",
+    "check_starting_11": true,
+    "check_captain": true,
     "check_deadline": "needs_check",
-    "check_booster_rules": "needs_check"
+    "check_booster_rules": true
   }
 }

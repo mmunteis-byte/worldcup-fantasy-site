@@ -1276,7 +1276,7 @@ h1 {
   font-weight: 800;
 }
 
-.fixture-poll {
+.score-predictor {
   margin-top: 10px;
   padding: 10px;
   background: #111116;
@@ -1284,32 +1284,92 @@ h1 {
   border-radius: 8px;
 }
 
-.fixture-poll p {
+.score-predictor > p {
   margin: 0 0 8px;
   color: white;
   font-weight: 900;
 }
 
-.poll-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+.score-guess-inputs,
+.saved-score-guess {
+  display: grid;
+  grid-template-columns: minmax(90px, 1fr) auto minmax(90px, 1fr);
+  gap: 10px;
+  align-items: end;
 }
 
-.poll-buttons button {
-  border: 1px solid #4a4a54;
-  border-radius: 999px;
-  padding: 8px 10px;
+.score-guess-inputs label {
+  display: grid;
+  gap: 6px;
+  color: #c9c9d1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.score-guess-inputs label:last-of-type {
+  text-align: right;
+}
+
+.score-guess-inputs input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px;
   color: white;
   background: #1b1b22;
+  border: 1px solid #4a4a54;
+  border-radius: 6px;
+  font-size: 17px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.score-guess-inputs > strong {
+  padding-bottom: 9px;
+  color: white;
+}
+
+.score-submit-button {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid #4a4a54;
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: white;
+  background: #e30613;
   font-weight: 900;
   cursor: pointer;
 }
 
-.poll-buttons button:hover,
-.poll-buttons button.selected {
-  color: #e30613;
+.score-submit-button:hover {
+  color: #111116;
   background: white;
+}
+
+.saved-score-guess {
+  align-items: center;
+  color: #c9c9d1;
+  text-align: center;
+}
+
+.saved-score-guess strong {
+  color: white;
+  font-size: 22px;
+}
+
+.score-result {
+  display: block;
+  margin-top: 10px;
+  color: white;
+  font-weight: 900;
+}
+
+.score-guess-error {
+  display: block;
+  min-height: 18px;
+  margin-top: 7px;
+  color: #ff9ea4;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .poll-note {
@@ -1318,7 +1378,6 @@ h1 {
   color: #c9c9d1 !important;
 }
 
-.poll-results,
 .wordle-hints {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -1328,14 +1387,6 @@ h1 {
   border-top: 1px solid #303038;
 }
 
-.poll-results p {
-  margin: 0;
-  color: white;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.poll-results span,
 .wordle-hints span {
   margin: 0;
   padding: 8px 10px;
@@ -1374,8 +1425,7 @@ h1 {
   font-size: 14px;
 }
 
-.wordle-card,
-.team-rating-card {
+.wordle-card {
   padding: 16px;
   background: #1b1b22;
   border: 1px solid #303038;
@@ -1383,63 +1433,88 @@ h1 {
   border-radius: 8px;
 }
 
-.wordle-card h3,
-.team-rating-card h3 {
+.wordle-history {
+  display: grid;
+  gap: 12px;
+}
+
+.wordle-card.solved {
+  border-color: #e30613;
+  background: #241116;
+}
+
+.scoring-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.scoring-card {
+  padding: 16px;
+  background: #1b1b22;
+  border: 1px solid #303038;
+  border-top: 4px solid #e30613;
+  border-radius: 8px;
+}
+
+.scoring-card h3 {
+  margin: 0 0 12px;
+  color: white;
+}
+
+.scoring-table {
+  display: grid;
+}
+
+.scoring-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid #303038;
+}
+
+.scoring-row:first-child {
+  border-top: 0;
+}
+
+.scoring-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.scoring-row strong {
+  color: white;
+  font-size: 14px;
+}
+
+.scoring-row span {
+  color: #c9c9d1;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.scoring-row b {
+  min-width: 38px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.positive-points {
+  color: white;
+  background: #9f0711;
+}
+
+.negative-points {
+  color: #111116;
+  background: white;
+}
+
+.wordle-card h3 {
   margin: 0 0 10px;
   color: white;
-}
-
-.overall-rating {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.overall-rating span {
-  color: #c9c9d1;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.overall-rating strong {
-  color: white;
-  font-size: 38px;
-}
-
-.rating-bars {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.rating-row {
-  display: grid;
-  grid-template-columns: 110px 1fr 42px;
-  align-items: center;
-  gap: 10px;
-  color: #c9c9d1;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.rating-track {
-  height: 10px;
-  overflow: hidden;
-  background: #111116;
-  border: 1px solid #303038;
-  border-radius: 999px;
-}
-
-.rating-track div {
-  height: 100%;
-  background: #e30613;
-}
-
-.rating-method {
-  color: #c9c9d1;
-  line-height: 1.45;
 }
 
 .group-grid {
@@ -1772,10 +1847,6 @@ h1 {
   }
 
   .wordle-box {
-    grid-template-columns: 1fr;
-  }
-
-  .rating-row {
     grid-template-columns: 1fr;
   }
 
