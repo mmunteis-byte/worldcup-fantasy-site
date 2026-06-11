@@ -61,7 +61,7 @@ let activeSlotId = null;
 let activeHeroSlide = 0;
 let currentTeamExport = null;
 const DATA_LAST_UPDATED = "2026-06-10";
-const APP_VERSION = "20260610p";
+const APP_VERSION = "20260611c";
 const WORDLE_MAX_GUESSES = 10;
 
 function versionedDataPath(filePath) {
@@ -308,10 +308,10 @@ function buildFantasySquad(players) {
 function getOptimizationCandidates(players, choices) {
   const byPoints = players.slice().sort((a, b) => {
     return getFantasyProjection(b, choices).projectedPoints - getFantasyProjection(a, choices).projectedPoints;
-  }).slice(0, 35);
+  }).slice(0, 24);
   const byValue = players.slice().sort((a, b) => {
     return getFantasyProjection(b, choices).valueScore - getFantasyProjection(a, choices).valueScore;
-  }).slice(0, 35);
+  }).slice(0, 24);
   const uniquePlayers = new Map([...byPoints, ...byValue].map((player) => [getPlayerId(player), player]));
 
   return [...uniquePlayers.values()];
@@ -319,7 +319,7 @@ function getOptimizationCandidates(players, choices) {
 
 function optimizeSquadForProjectedPoints(positionSlots, candidatePools, budget, choices) {
   let states = [{ squad: [], price: 0, projectedPoints: 0, countryCounts: {}, goalkeeperCountries: [], positionIndexes: {} }];
-  const beamSize = 1400;
+  const beamSize = 450;
 
   positionSlots.forEach((position, slotIndex) => {
     const nextStates = [];
@@ -1647,7 +1647,7 @@ function numberOrNull(value) {
 // Project fantasy output from playing time, official scoring, form, team strength, and matchup.
 // These are model estimates rather than guaranteed FIFA Fantasy points.
 function getFantasyProjection(player, choices = getUserChoices()) {
-  const cacheKey = `${getPlayerId(player)}|${choices.teamStyle}|${choices.riskStyle}`;
+  const cacheKey = `${getPlayerId(player)}|${choices.teamStyle}|${choices.riskStyle}|${choices.favoriteCountry || ""}`;
   if (fantasyProjectionCache.has(cacheKey)) return fantasyProjectionCache.get(cacheKey);
   const playingTime = getPlayingTimeProjection(player);
   const startProbability = getStartingProbability(player, playingTime);
@@ -1675,17 +1675,30 @@ function getFantasyProjection(player, choices = getUserChoices()) {
   const goalPoints = { GK: 9, DEF: 7, MID: 6, FWD: 5 }[position] || 5;
   const cleanSheetPoints = { GK: 5, DEF: 5, MID: 1, FWD: 0 }[position] || 0;
   const cardCost = historicalRates.cardsPer90 * minutesShare;
+  const attackingPoints = expectedGoals * goalPoints + expectedAssists * 3;
+  const defensivePoints = cleanSheetProbability * cleanSheetPoints * (0.75 + defenseQuality * 0.25);
+  const modeWeights = getFantasyModeProjectionWeights(position, choices);
   const teamStrengthMultiplier = getTeamStrengthMultiplier(team);
-  const styleMultiplier = getProjectionStyleMultiplier(position, choices);
   const availabilityMultiplier = player.selectable_status === "playing" ? 1 : 0.1;
-  const riskMultiplier = Math.max(0.78, 1 - getPlayerRiskScore(player) / 500);
+  const riskMultiplier = getProjectionRiskMultiplier(player, startProbability, choices);
+  const chaosUpside = choices.teamStyle === "chaos"
+    ? Math.max(0, expectedGoalsFor - 1.3) * (0.5 + officialPriceQuality) * 0.45
+    : 0;
+  const underdogValueBoost = choices.teamStyle === "underdog"
+    ? Math.max(0, 7 - getPlayerPrice(player)) * 0.08
+    : 0;
+  const favoriteCountryMultiplier = choices.favoriteCountry
+    && String(player.country).toLowerCase() === choices.favoriteCountry
+    ? 1.04
+    : 1;
   const projectedPoints = Math.max(0, (
-    appearancePoints
-    + expectedGoals * goalPoints
-    + expectedAssists * 3
-    + cleanSheetProbability * cleanSheetPoints * (0.75 + defenseQuality * 0.25)
+    appearancePoints * modeWeights.appearance
+    + attackingPoints * modeWeights.attack
+    + defensivePoints * modeWeights.defense
+    + chaosUpside
+    + underdogValueBoost
     - cardCost
-  ) * teamStrengthMultiplier * styleMultiplier * availabilityMultiplier * riskMultiplier);
+  ) * teamStrengthMultiplier * availabilityMultiplier * riskMultiplier * favoriteCountryMultiplier);
   const salary = getPlayerPrice(player);
 
   const projection = {
@@ -1701,6 +1714,8 @@ function getFantasyProjection(player, choices = getUserChoices()) {
     expectedGoalsAgainst,
     cleanSheetProbability: Number(cleanSheetProbability.toFixed(2)),
     riskMultiplier: Number(riskMultiplier.toFixed(2)),
+    attackProjection: Number(attackingPoints.toFixed(2)),
+    defenseProjection: Number(defensivePoints.toFixed(2)),
     lineupStatus: playingTime.status
   };
 
@@ -1794,12 +1809,40 @@ function getTeamStrengthMultiplier(team) {
   return Math.max(0.72, Math.min(1.3, 1.32 - ranking * 0.016));
 }
 
-function getProjectionStyleMultiplier(position, choices) {
-  if (choices.teamStyle === "attacking" && ["MID", "FWD"].includes(position)) return 1.06;
-  if (choices.teamStyle === "defensive" && ["GK", "DEF"].includes(position)) return 1.06;
-  if (choices.teamStyle === "underdog") return 1;
-  if (choices.teamStyle === "chaos" && ["MID", "FWD"].includes(position)) return 1.03;
-  return 1;
+function getFantasyModeProjectionWeights(position, choices) {
+  const weights = { appearance: 1, attack: 1, defense: 1 };
+
+  if (choices.teamStyle === "attacking") {
+    weights.attack = ["MID", "FWD"].includes(position) ? 1.55 : 1.25;
+    weights.defense = 0.7;
+    weights.appearance = 0.9;
+  } else if (choices.teamStyle === "defensive") {
+    weights.attack = 0.72;
+    weights.defense = ["GK", "DEF"].includes(position) ? 1.65 : 1.2;
+    weights.appearance = 1.1;
+  } else if (choices.teamStyle === "chaos") {
+    weights.attack = 1.35;
+    weights.defense = 0.75;
+    weights.appearance = 0.75;
+  } else if (choices.teamStyle === "underdog") {
+    weights.attack = 1.08;
+    weights.defense = 0.95;
+    weights.appearance = 0.95;
+  }
+
+  return weights;
+}
+
+function getProjectionRiskMultiplier(player, startProbability, choices) {
+  const risk = getPlayerRiskScore(player) / 100;
+
+  if (choices.riskStyle === "safe") {
+    const reliability = 0.58 + startProbability * 0.42;
+    return Math.max(0.5, reliability * (1 - risk * 0.3));
+  }
+
+  const upsideTolerance = 0.9 + (1 - startProbability) * 0.12;
+  return Math.max(0.78, upsideTolerance * (1 - risk * 0.08));
 }
 
 // Apply the official position-specific point values to the historical stats we have.
@@ -2286,6 +2329,9 @@ function showTeam(players) {
 
   budgetSummary.innerHTML = `
     <div>
+      <strong>Current strategy:</strong> ${getStrategyDisplayName(getUserChoices())}
+    </div>
+    <div>
       <strong>Total price:</strong> ${budgetInfo.totalPrice.toFixed(1)} ${getCurrencyLabel()}
     </div>
     <div>
@@ -2356,6 +2402,12 @@ function showTeam(players) {
   bench.forEach((player, index) => {
     benchLine.appendChild(createSimplePlayerToken(player, index + 1));
   });
+}
+
+function getStrategyDisplayName(choices) {
+  const style = choices.teamStyle.charAt(0).toUpperCase() + choices.teamStyle.slice(1);
+  const risk = choices.riskStyle.charAt(0).toUpperCase() + choices.riskStyle.slice(1);
+  return `${style} · ${risk}`;
 }
 
 // Create a compact pitch-style card for generated bench players
