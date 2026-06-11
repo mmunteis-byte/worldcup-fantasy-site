@@ -61,7 +61,7 @@ let activeSlotId = null;
 let activeHeroSlide = 0;
 let currentTeamExport = null;
 const DATA_LAST_UPDATED = "2026-06-11";
-const APP_VERSION = "20260611d";
+const APP_VERSION = "20260611e";
 const WORDLE_MAX_GUESSES = 10;
 
 function versionedDataPath(filePath) {
@@ -1301,7 +1301,12 @@ function getAverageScore(players, field) {
 
 // Calculate the total price of a squad
 function getSquadTotalPrice(squad) {
-  return squad.reduce((total, player) => total + getPlayerPrice(player), 0);
+  const rawTotal = squad.reduce((total, player) => total + getPlayerPrice(player), 0);
+  return roundMoney(rawTotal);
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 10) / 10;
 }
 
 function getSquadProjectedPoints(squad, choices = getUserChoices()) {
@@ -1316,12 +1321,13 @@ function getRemainingSquadSlots(squad) {
 // Create simple budget information for display
 function getBudgetInfo(squad) {
   const totalPrice = getSquadTotalPrice(squad);
-  const budget = getBudgetLimit();
+  const budget = roundMoney(getBudgetLimit());
+  const remainingBudget = roundMoney(budget - totalPrice);
 
   return {
     totalPrice,
     budget,
-    remainingBudget: budget - totalPrice,
+    remainingBudget: remainingBudget === 0 ? 0 : remainingBudget,
     isOverBudget: totalPrice > budget
   };
 }
