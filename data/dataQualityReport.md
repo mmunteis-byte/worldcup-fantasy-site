@@ -620,3 +620,19 @@ Current matched nations:
 The website must not treat a player as an expected starter based only on club form, official Fantasy price, or alphabetical order. An expected-starter label now requires verified national-team starts or minutes, or a separately sourced lineup projection. Missing national-team evidence is labeled `Lineup uncertain`.
 
 To complete this dataset, match-by-match lineups and player appearances must be collected for UEFA, CONMEBOL, CAF, AFC, CONCACAF, and OFC qualifying, then matched to `players.json`. Fields that are not published by a source must remain `null`.
+# Official FIFA Fantasy Pool Sync - June 11, 2026
+
+The local player files were synchronized with the current official FIFA Fantasy endpoints:
+
+- `https://play.fifa.com/json/fantasy/players.json`
+- `https://play.fifa.com/json/fantasy/squads.json`
+
+Results:
+
+- 1,485 official player records
+- 1,245 players currently marked `playing`
+- 240 historical records currently marked `transferred`
+- 0 official FIFA player IDs missing from the local files
+- 0 local status values differing from the official endpoint after synchronization
+
+Recommendations, the Player Pool, My XI, and Create XI now require both `roster_status: official_fantasy_pool` and `selectable_status: playing`. Transferred players stay in the source file for history but cannot be selected or recommended.

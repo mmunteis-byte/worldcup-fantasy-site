@@ -60,8 +60,8 @@ let customSlots = [];
 let activeSlotId = null;
 let activeHeroSlide = 0;
 let currentTeamExport = null;
-const DATA_LAST_UPDATED = "2026-06-10";
-const APP_VERSION = "20260611c";
+const DATA_LAST_UPDATED = "2026-06-11";
+const APP_VERSION = "20260611d";
 const WORDLE_MAX_GUESSES = 10;
 
 function versionedDataPath(filePath) {
@@ -235,7 +235,8 @@ function getCaptainMultiplierLabel() {
 
 // Official FIFA Fantasy data is the normal recommendation pool.
 function isOfficialFantasyPlayer(player) {
-  return player.roster_status === "official_fantasy_pool";
+  return player.roster_status === "official_fantasy_pool"
+    && player.selectable_status === "playing";
 }
 
 function getPlayerId(player) {
@@ -2670,7 +2671,7 @@ function showOfficialDataSummary(players) {
   const container = document.querySelector("#officialDataSummary");
 
   container.innerHTML = `
-    ${createDataCard("Official player pool", `${officialPlayers.length} players`, "Normal recommendations only use roster_status official_fantasy_pool.")}
+    ${createDataCard("Official player pool", `${officialPlayers.length} selectable players`, "Recommendations require official_fantasy_pool and the current FIFA status playing.")}
     ${createDataCard("Positions", Object.entries(positions).map(([key, value]) => `${key}: ${value}`).join(" | ") || "needs_check", "Uses official_fantasy_position from data/players.json.")}
     ${createDataCard("Prices", `$${Math.min(...prices).toFixed(1)}m to $${Math.max(...prices).toFixed(1)}m`, "Uses official_price. Old prototype prices are not used when official prices exist.")}
     ${createDataCard("Rules file", fantasyRules.rules_version, fantasyRules.rules_status)}

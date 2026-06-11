@@ -3219,7 +3219,7 @@
     "official_price": 5.7,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -6609,7 +6609,7 @@
     "official_price": 4.8,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -6924,7 +6924,7 @@
     "official_price": 4.2,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -7899,7 +7899,7 @@
     "official_price": 3.5,
     "club": null,
     "league": null,
-    "selectable_status": "transferred",
+    "selectable_status": "playing",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -8559,7 +8559,7 @@
     "official_price": 3.5,
     "club": null,
     "league": null,
-    "selectable_status": "transferred",
+    "selectable_status": "playing",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -8679,7 +8679,7 @@
     "official_price": 4,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -16434,7 +16434,7 @@
     "official_price": 4,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -16734,7 +16734,7 @@
     "official_price": 4.5,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -18714,7 +18714,7 @@
     "official_price": 3.6,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -19659,7 +19659,7 @@
     "official_price": 4.7,
     "club": null,
     "league": null,
-    "selectable_status": "transferred",
+    "selectable_status": "playing",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -20229,7 +20229,7 @@
     "official_price": 4.8,
     "club": null,
     "league": null,
-    "selectable_status": "transferred",
+    "selectable_status": "playing",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -21309,7 +21309,7 @@
     "official_price": 4.3,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -21504,7 +21504,7 @@
     "official_price": 5.3,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -21699,7 +21699,7 @@
     "official_price": 5.2,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -21999,7 +21999,7 @@
     "official_price": 4.3,
     "club": null,
     "league": null,
-    "selectable_status": "playing",
+    "selectable_status": "transferred",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
@@ -22210,6 +22210,66 @@
     "club": null,
     "league": null,
     "selectable_status": "transferred",
+    "roster_status": "official_fantasy_pool",
+    "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
+    "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
+  },
+  {
+    "fifa_fantasy_id": 2072,
+    "player_id": "fifa_2072",
+    "name": "Assan Ouédraogo",
+    "country": "GER",
+    "team_id": "GER",
+    "official_fantasy_position": "MID",
+    "official_price": 4.5,
+    "club": null,
+    "league": null,
+    "selectable_status": "playing",
+    "roster_status": "official_fantasy_pool",
+    "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
+    "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
+  },
+  {
+    "fifa_fantasy_id": 2073,
+    "player_id": "fifa_2073",
+    "name": "Éderson",
+    "country": "BRA",
+    "team_id": "BRA",
+    "official_fantasy_position": "MID",
+    "official_price": 6.3,
+    "club": null,
+    "league": null,
+    "selectable_status": "playing",
+    "roster_status": "official_fantasy_pool",
+    "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
+    "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
+  },
+  {
+    "fifa_fantasy_id": 2074,
+    "player_id": "fifa_2074",
+    "name": "Lutsharel Geertruida",
+    "country": "NED",
+    "team_id": "NED",
+    "official_fantasy_position": "DEF",
+    "official_price": 4.3,
+    "club": null,
+    "league": null,
+    "selectable_status": "playing",
+    "roster_status": "official_fantasy_pool",
+    "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
+    "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
+  },
+  {
+    "fifa_fantasy_id": 2075,
+    "player_id": "fifa_2075",
+    "name": "Dejan Ljubicic",
+    "country": "AUT",
+    "team_id": "AUT",
+    "official_fantasy_position": "MID",
+    "official_price": 5,
+    "club": null,
+    "league": null,
+    "selectable_status": "playing",
     "roster_status": "official_fantasy_pool",
     "source_note": "Official FIFA World Cup Fantasy JSON endpoint: https://play.fifa.com/json/fantasy/players.json. Team/country mapping from https://play.fifa.com/json/fantasy/squads.json.",
     "data_note": "Official FIFA Fantasy player, position, price, status, and nation/team mapping. Club and league are not included in this official JSON file."
