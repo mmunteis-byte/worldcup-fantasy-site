@@ -592,5 +592,23 @@
     "red_cards": null,
     "source_note": "No national team performance row matched yet for this added GK/DEF player.",
     "data_quality": "unmatched_no_verified_national_team_performance_data"
+  },
+  {
+    "player_id": "fifa_1099",
+    "fifa_fantasy_id": 1099,
+    "name": "Unai Simón",
+    "country": "ESP",
+    "competition": "UEFA World Cup qualifying",
+    "season_or_cycle": "2026 World Cup qualifying",
+    "appearances": 6,
+    "starts": 6,
+    "minutes": null,
+    "goals": 0,
+    "assists": null,
+    "clean_sheets": null,
+    "yellow_cards": null,
+    "red_cards": null,
+    "source_note": "AS reported on June 5, 2026 that Unai Simon started all six of Spain's World Cup qualifying matches: https://as.com/futbol/seleccion/unai-simon-aspira-al-guante-de-oro-del-mundial-f202606-n/",
+    "data_quality": "matched_verified_qualifying_starts"
   }
 ]

@@ -53,12 +53,15 @@ let nationalTeamPerformance = [];
 let fixtureDifficulty = [];
 let scorePredictions = [];
 let dataMaps = {};
+let fantasyProjectionCache = new Map();
+let nationalHierarchyCache = new Map();
+let optimizedSquadCache = new Map();
 let customSlots = [];
 let activeSlotId = null;
 let activeHeroSlide = 0;
 let currentTeamExport = null;
-const DATA_LAST_UPDATED = "2026-06-05";
-const APP_VERSION = "20260610g";
+const DATA_LAST_UPDATED = "2026-06-10";
+const APP_VERSION = "20260610p";
 const WORDLE_MAX_GUESSES = 10;
 
 function versionedDataPath(filePath) {
@@ -273,21 +276,99 @@ function getOfficialPlayerPool(players) {
   });
 }
 
-// Build a 15-player squad using the position rules from fantasyRules.json
+// Build a legal 15-player squad by maximizing projected fantasy points under budget.
 function buildFantasySquad(players) {
   const choices = getUserChoices();
+  const cacheKey = `${choices.teamStyle}|${choices.riskStyle}|${choices.favoriteCountry}`;
+  if (players === allPlayers && optimizedSquadCache.has(cacheKey)) {
+    return optimizedSquadCache.get(cacheKey).slice();
+  }
   const officialPlayers = getOfficialPlayerPool(players);
   const positionRules = getPositionRules();
   const budget = getBudgetLimit();
-  const squad = [];
-  const countryCounts = {};
+  const positionSlots = Object.entries(positionRules)
+    .flatMap(([position, amount]) => Array(amount).fill(position));
+  const candidatePools = Object.fromEntries(
+    Object.keys(positionRules).map((position) => [
+      position,
+      getOptimizationCandidates(getPlayersByPosition(officialPlayers, position), choices)
+    ])
+  );
+  const optimizedSquad = optimizeSquadForProjectedPoints(positionSlots, candidatePools, budget, choices);
 
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "GK"), positionRules.GK, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "DEF"), positionRules.DEF, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "MID"), positionRules.MID, choices, budget);
-  addBudgetPicks(squad, countryCounts, getPlayersByPosition(officialPlayers, "FWD"), positionRules.FWD, choices, budget);
+  const finalSquad = optimizedSquad.length === getSquadSizeRule()
+    ? optimizedSquad
+    : repairSquadBudget(optimizedSquad, officialPlayers, getCountryCounts(optimizedSquad), choices, budget);
 
-  return repairSquadBudget(squad, officialPlayers, countryCounts, choices, budget);
+  if (players === allPlayers) optimizedSquadCache.set(cacheKey, finalSquad.slice());
+  return finalSquad;
+}
+
+// Keep high-projection and high-value options so the optimizer stays quick and varied.
+function getOptimizationCandidates(players, choices) {
+  const byPoints = players.slice().sort((a, b) => {
+    return getFantasyProjection(b, choices).projectedPoints - getFantasyProjection(a, choices).projectedPoints;
+  }).slice(0, 35);
+  const byValue = players.slice().sort((a, b) => {
+    return getFantasyProjection(b, choices).valueScore - getFantasyProjection(a, choices).valueScore;
+  }).slice(0, 35);
+  const uniquePlayers = new Map([...byPoints, ...byValue].map((player) => [getPlayerId(player), player]));
+
+  return [...uniquePlayers.values()];
+}
+
+function optimizeSquadForProjectedPoints(positionSlots, candidatePools, budget, choices) {
+  let states = [{ squad: [], price: 0, projectedPoints: 0, countryCounts: {}, goalkeeperCountries: [], positionIndexes: {} }];
+  const beamSize = 1400;
+
+  positionSlots.forEach((position, slotIndex) => {
+    const nextStates = [];
+
+    states.forEach((state) => {
+      candidatePools[position].forEach((player, candidateIndex) => {
+        const playerId = getPlayerId(player);
+        const country = player.country || "needs_check";
+        if (candidateIndex <= (state.positionIndexes[position] ?? -1)) return;
+        if (state.squad.some((selected) => getPlayerId(selected) === playerId)) return;
+        if ((state.countryCounts[country] || 0) >= getGroupStageCountryLimit()) return;
+        if (position === "GK" && state.goalkeeperCountries.includes(country)) return;
+
+        const newPrice = state.price + getPlayerPrice(player);
+        if (newPrice > budget + 0.001) return;
+        if (!canCompleteRemainingSlots(newPrice, positionSlots.slice(slotIndex + 1), candidatePools, state.squad, player, budget)) return;
+
+        const projection = getFantasyProjection(player, choices);
+        nextStates.push({
+          squad: [...state.squad, player],
+          price: newPrice,
+          projectedPoints: state.projectedPoints + projection.projectedPoints,
+          countryCounts: { ...state.countryCounts, [country]: (state.countryCounts[country] || 0) + 1 },
+          goalkeeperCountries: position === "GK" ? [...state.goalkeeperCountries, country] : state.goalkeeperCountries,
+          positionIndexes: { ...state.positionIndexes, [position]: candidateIndex }
+        });
+      });
+    });
+
+    states = nextStates
+      .sort((a, b) => b.projectedPoints - a.projectedPoints)
+      .slice(0, beamSize);
+  });
+
+  return states.sort((a, b) => b.projectedPoints - a.projectedPoints)[0]?.squad || [];
+}
+
+function canCompleteRemainingSlots(currentPrice, remainingSlots, candidatePools, selectedPlayers, newPlayer, budget) {
+  const selectedIds = new Set([...selectedPlayers, newPlayer].map(getPlayerId));
+  let minimumRemainingCost = 0;
+
+  remainingSlots.forEach((position) => {
+    const cheapest = candidatePools[position]
+      .filter((player) => !selectedIds.has(getPlayerId(player)))
+      .reduce((minimum, player) => Math.min(minimum, getPlayerPrice(player)), Infinity);
+    minimumRemainingCost += Number.isFinite(cheapest) ? cheapest : budget;
+  });
+
+  return currentPrice + minimumRemainingCost <= budget + 0.001;
 }
 
 // Find players by the website's position names
@@ -362,6 +443,9 @@ function getCheaperReplacement(selectedPlayer, squad, countryCounts, officialPla
   const selectedIds = squad.map(getPlayerId);
   const selectedCountry = selectedPlayer.country || "needs_check";
   const temporaryCountryCounts = { ...countryCounts };
+  const otherGoalkeeperCountries = getPlayersByPosition(squad, "GK")
+    .filter((player) => getPlayerId(player) !== getPlayerId(selectedPlayer))
+    .map((player) => player.country);
 
   temporaryCountryCounts[selectedCountry] = Math.max(0, (temporaryCountryCounts[selectedCountry] || 0) - 1);
 
@@ -370,7 +454,8 @@ function getCheaperReplacement(selectedPlayer, squad, countryCounts, officialPla
     .filter((player) => !selectedIds.includes(getPlayerId(player)))
     .filter((player) => getPlayerPrice(player) < getPlayerPrice(selectedPlayer))
     .filter((player) => canAddCountry(player, temporaryCountryCounts))
-    .sort((a, b) => playerScore(b, choices) - playerScore(a, choices))[0];
+    .filter((player) => getPlayerPosition(player) !== "GK" || !otherGoalkeeperCountries.includes(player.country))
+    .sort((a, b) => getFantasyProjection(b, choices).projectedPoints - getFantasyProjection(a, choices).projectedPoints)[0];
 }
 
 function removeCountryCount(player, countryCounts) {
@@ -415,6 +500,8 @@ function validateSquad(squad, startingTeam, captain, formation, budgetInfo, coun
   };
   const formationParts = formation.split("-").map((part) => Number(part));
   const countryLimitPassed = Object.values(countryCounts).every((count) => count <= maxPerCountry);
+  const goalkeeperCountries = getPlayersByPosition(squad, "GK").map((player) => player.country || "needs_check");
+  const goalkeeperCountriesAreDifferent = new Set(goalkeeperCountries).size === goalkeeperCountries.length;
   const captainInStarting11 = captain ? startingTeam.some((player) => getPlayerId(player) === getPlayerId(captain)) : false;
 
   return [
@@ -440,6 +527,13 @@ function validateSquad(squad, startingTeam, captain, formation, budgetInfo, coun
       label: "Country limit",
       passed: countryLimitPassed,
       message: `No country should have more than ${maxPerCountry} players. Players marked needs_check are treated as one cautious group.`
+    },
+    {
+      label: "Goalkeeper diversity",
+      passed: goalkeeperCountriesAreDifferent,
+      message: goalkeeperCountriesAreDifferent
+        ? "The two goalkeepers come from different national teams."
+        : "Choose goalkeepers from different national teams to avoid duplicated clean-sheet exposure and improve flexibility."
     },
     {
       label: "Starting 11",
@@ -559,6 +653,7 @@ function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formatio
     national_team_performance_summary: getNationalTeamPerformanceSummary(squad),
     fixture_context: getFixtureContextSummary(squad),
     expected_goals_context: getExpectedGoalsContext(squad),
+    total_projected_fantasy_points: Number(getSquadProjectedPoints(squad, choices).toFixed(2)),
     recommendation_explanation: getRecommendationExplanation(squad, choices, ruleChecks, captainPick),
     data_sources: [
       "data/players.json",
@@ -583,6 +678,7 @@ function saveCurrentTeamExport(squad, startingTeam, bench, captainPick, formatio
 
 function buildExportPlayer(player, choices) {
   const recommendation = getRecommendationScore(player, choices);
+  const projection = getFantasyProjection(player, choices);
   const nextFixture = getNextFixtureContext(player);
   const clubRow = getClubPerformance(player);
   const nationalRow = getNationalPerformance(player);
@@ -603,6 +699,12 @@ function buildExportPlayer(player, choices) {
     national_team_data_quality: player.national_team_data_quality,
     recommendation_status: player.recommendation_status,
     recommendation_score: recommendationScoreOutOf100(recommendation.total),
+    projected_fantasy_points: projection.projectedPoints,
+    salary_cost: projection.salary,
+    value_score: projection.valueScore,
+    starting_probability: projection.startProbability,
+    projected_minutes: projection.projectedMinutes,
+    matchup_difficulty: projection.matchupDifficulty,
     recommendation_score_parts: roundScoreParts(recommendation.parts),
     next_fixture: nextFixture,
     club_performance: summarizeClubPerformanceRow(clubRow),
@@ -1083,6 +1185,7 @@ function getRecommendationExplanation(squad, choices, ruleChecks, captainPick) {
     .map((player) => ({
       name: player.name,
       recommendation_score: getPlayerRecommendationOutOf100(player, choices),
+      playing_time_projection: getPlayingTimeProjection(player),
       reason: getPlayerReason(player),
       fixture: getNextFixtureContext(player)
     }));
@@ -1094,7 +1197,7 @@ function getRecommendationExplanation(squad, choices, ruleChecks, captainPick) {
     strategy_mode: choices.teamStyle,
     risk_mode: choices.riskStyle,
     captain_reason: captainPick.reason,
-    scoring_formula: "fantasy_base_score + fantasy_scoring_fit + club_form_score + national_team_form_score + fixture_boost + team_strength_boost - risk_penalty - data_quality_penalty",
+    scoring_formula: "fantasy_base_score + fantasy_scoring_fit + club_form_score + national_team_form_score + playing_time_score + fixture_boost + team_strength_boost - risk_penalty - data_quality_penalty",
     top_recommendations: topPlayers
   };
 }
@@ -1102,9 +1205,11 @@ function getRecommendationExplanation(squad, choices, ruleChecks, captainPick) {
 function getPlayerPickReasons(player) {
   const recommendation = getRecommendationScore(player, getNeutralChoices());
   const context = getNextFixtureContext(player);
+  const playingTime = getPlayingTimeProjection(player);
   const reasons = [
     `Official fantasy player with position ${getPlayerPosition(player)} and price ${getPlayerPrice(player)}.`,
-    `Recommendation score: ${recommendationScoreOutOf100(recommendation.total)}/100 from price, opponent context, team strength, and playing profile.`
+    `Recommendation score: ${recommendationScoreOutOf100(recommendation.total)}/100 from price, opponent context, team strength, playing time, and playing profile.`,
+    `Projected role: ${playingTime.status}, with ${playingTime.projectedMinutes} projected minutes.`
   ];
 
   if (context) {
@@ -1116,6 +1221,7 @@ function getPlayerPickReasons(player) {
 
 function getPlayerCautionReasons(player) {
   const cautions = [];
+  const playingTime = getPlayingTimeProjection(player);
 
   if (!isOfficialFantasyPlayer(player)) {
     cautions.push("This player is not currently marked as part of the official FIFA Fantasy player pool.");
@@ -1123,6 +1229,10 @@ function getPlayerCautionReasons(player) {
 
   if (getPlayerRiskScore(player) >= 50) {
     cautions.push(`Risk score is ${getPlayerRiskScore(player)}, which is higher than a safe pick.`);
+  }
+
+  if (playingTime.status === "Unlikely to play" || playingTime.status === "Lineup uncertain") {
+    cautions.push(`Playing-time projection: ${playingTime.status}. Check confirmed lineups before the deadline.`);
   }
 
   return cautions.length ? cautions : ["No major caution flags from the current website data."];
@@ -1193,6 +1303,10 @@ function getSquadTotalPrice(squad) {
   return squad.reduce((total, player) => total + getPlayerPrice(player), 0);
 }
 
+function getSquadProjectedPoints(squad, choices = getUserChoices()) {
+  return squad.reduce((total, player) => total + getFantasyProjection(player, choices).projectedPoints, 0);
+}
+
 // Count how many squad slots are still empty
 function getRemainingSquadSlots(squad) {
   return getSquadSizeRule() - squad.length;
@@ -1218,11 +1332,17 @@ function buildStartingTeam(squad) {
   const choices = getUserChoices();
 
   return [
-    ...pickBestPlayers(getPlayersByPosition(squad, "GK"), 1, choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "DEF"), parts[0], choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "MID"), parts[1], choices),
-    ...pickBestPlayers(getPlayersByPosition(squad, "FWD"), parts[2], choices)
+    ...pickBestProjectedPlayers(getPlayersByPosition(squad, "GK"), 1, choices),
+    ...pickBestProjectedPlayers(getPlayersByPosition(squad, "DEF"), parts[0], choices),
+    ...pickBestProjectedPlayers(getPlayersByPosition(squad, "MID"), parts[1], choices),
+    ...pickBestProjectedPlayers(getPlayersByPosition(squad, "FWD"), parts[2], choices)
   ];
+}
+
+function pickBestProjectedPlayers(players, amount, choices) {
+  return players.slice().sort((a, b) => {
+    return getFantasyProjection(b, choices).projectedPoints - getFantasyProjection(a, choices).projectedPoints;
+  }).slice(0, amount);
 }
 
 // Use one allowed formation from fantasyRules.json for the generated XI
@@ -1280,7 +1400,8 @@ function chooseCaptain(startingTeam, choices = getUserChoices()) {
 
 // Score captain options based on the user's selected style
 function captainScore(player, choices) {
-  const recommendation = getRecommendationScore(player, choices).total;
+  const projection = getFantasyProjection(player, choices);
+  const recommendation = projection.projectedPoints * 12;
   const nationalRow = getNationalPerformance(player);
   const nationalGoals = Number(nationalRow?.goals || 0);
 
@@ -1289,7 +1410,7 @@ function captainScore(player, choices) {
   }
 
   if (choices.riskStyle === "safe") {
-    return recommendation - getPlayerRiskScore(player) * 0.4;
+    return recommendation * projection.startProbability - getPlayerRiskScore(player) * 0.15;
   }
 
   return recommendation;
@@ -1361,13 +1482,15 @@ function getPlayerRecommendationOutOf100(player, choices = getUserChoices()) {
 // Exact 2026 point values remain needs_check, so this ranks picks rather than projecting points.
 // recommendation_score =
 // fantasy_base_score + fantasy_scoring_fit + club_form_score + national_team_form_score
-// + fixture_boost + team_strength_boost - risk_penalty - data_quality_penalty.
+// + playing_time_score + fixture_boost + team_strength_boost
+// - risk_penalty - data_quality_penalty.
 function getRecommendationScore(player, choices = getUserChoices()) {
   const parts = getRecommendationParts(player, choices);
   let total = parts.fantasy_base_score
     + parts.fantasy_scoring_fit
     + parts.club_form_score
     + parts.national_team_form_score
+    + parts.playing_time_score
     + parts.fixture_boost
     + parts.team_strength_boost
     - parts.risk_penalty
@@ -1410,6 +1533,7 @@ function getRecommendationParts(player, choices) {
   const fantasyScoringFit = getFantasyScoringFit(player, weights);
   const clubFormScore = getClubFormScore(player, weights);
   const nationalTeamFormScore = getNationalTeamFormScore(player, weights);
+  const playingTimeScore = getPlayingTimeProjection(player).score * weights.playingTime;
   const fixtureBoost = getFixtureBoost(player, weights);
   const teamStrengthBoost = getTeamStrengthBoost(player, weights);
   const riskPenalty = getRiskPenalty(player, weights);
@@ -1420,11 +1544,262 @@ function getRecommendationParts(player, choices) {
     fantasy_scoring_fit: fantasyScoringFit,
     club_form_score: clubFormScore,
     national_team_form_score: nationalTeamFormScore,
+    playing_time_score: playingTimeScore,
     fixture_boost: fixtureBoost,
     team_strength_boost: teamStrengthBoost,
     risk_penalty: riskPenalty,
     data_quality_penalty: dataQualityPenalty
   };
+}
+
+// Estimate a player's likely role from official availability and verified starts/minutes.
+// This is a projection, not a confirmed match lineup.
+function getPlayingTimeProjection(player) {
+  const clubRow = getClubPerformance(player);
+  const nationalRow = getNationalPerformance(player);
+  const selectable = player.selectable_status || "unknown";
+  const inOfficialPool = player.roster_status === "official_fantasy_pool";
+
+  if (selectable !== "playing" || !inOfficialPool) {
+    return { status: "Unlikely to play", projectedMinutes: "0-15", score: -30, confidence: "high" };
+  }
+
+  // Sourced player-specific projections take priority over the fallback model.
+  if (player.projected_lineup_status === "expected_starter") {
+    return { status: "Expected starter", projectedMinutes: player.projected_minutes || "60-90", score: 8, confidence: "high" };
+  }
+  if (player.projected_lineup_status === "bench_rotation") {
+    return { status: "Bench / rotation option", projectedMinutes: player.projected_minutes || "15-45", score: -2, confidence: "high" };
+  }
+  if (player.projected_lineup_status === "unlikely_to_play") {
+    return { status: "Unlikely to play", projectedMinutes: player.projected_minutes || "0-20", score: -25, confidence: "high" };
+  }
+
+  const clubStarts = numberOrNull(clubRow?.starts);
+  const clubMinutes = numberOrNull(clubRow?.minutes);
+  const nationalStarts = numberOrNull(nationalRow?.starts);
+  const nationalMinutes = numberOrNull(nationalRow?.minutes);
+  const nationalAppearances = numberOrNull(nationalRow?.appearances);
+  const nationalMinutesPerAppearance = nationalMinutes !== null && nationalAppearances > 0
+    ? nationalMinutes / nationalAppearances
+    : null;
+  const hierarchy = getNationalPositionHierarchy(player);
+
+  const strongStarterEvidence = (nationalStarts !== null && nationalStarts >= 3)
+    || (nationalMinutesPerAppearance !== null && nationalMinutesPerAppearance >= 55);
+  const rotationEvidence = (nationalStarts !== null && nationalStarts >= 1)
+    || (nationalMinutesPerAppearance !== null && nationalMinutesPerAppearance >= 20)
+    || (nationalAppearances !== null && nationalAppearances >= 2)
+    || (clubStarts !== null && clubStarts >= 10);
+  const noPlayingEvidence = (clubMinutes === 0 && clubStarts === 0)
+    || (nationalMinutes === 0 && nationalStarts === 0);
+
+  if (strongStarterEvidence) {
+    return { status: "Expected starter", projectedMinutes: "60-90", score: 8, confidence: "medium" };
+  }
+  if (noPlayingEvidence) {
+    return { status: "Unlikely to play", projectedMinutes: "0-20", score: -25, confidence: "medium" };
+  }
+  if (hierarchy.rank > hierarchy.starterSlots + 1) {
+    return { status: "Unlikely to play", projectedMinutes: "0-20", score: -25, confidence: "low" };
+  }
+  if (rotationEvidence) {
+    return { status: "Bench / rotation option", projectedMinutes: "20-60", score: 1, confidence: "medium" };
+  }
+  // Price hierarchy can flag depth concerns, but cannot prove a national-team start.
+  if (hierarchy.rank <= hierarchy.starterSlots + 1) {
+    return { status: "Lineup uncertain", projectedMinutes: "needs check", score: -6, confidence: "low" };
+  }
+
+  return { status: "Unlikely to play", projectedMinutes: "0-30", score: -18, confidence: "low" };
+}
+
+function getNationalPositionHierarchy(player) {
+  const position = getPlayerPosition(player);
+  const starterSlots = { GK: 1, DEF: 4, MID: 4, FWD: 2 }[position] || 1;
+  const cacheKey = `${player.team_id}|${position}`;
+  if (nationalHierarchyCache.has(cacheKey)) {
+    const cachedPeers = nationalHierarchyCache.get(cacheKey);
+    const cachedRank = cachedPeers.findIndex((peer) => getPlayerId(peer) === getPlayerId(player)) + 1;
+    return { rank: cachedRank || cachedPeers.length + 1, total: cachedPeers.length, starterSlots };
+  }
+  const positionPeers = getOfficialPlayerPool(allPlayers)
+    .filter((peer) => peer.team_id === player.team_id && getPlayerPosition(peer) === position)
+    .slice()
+    .sort((a, b) => {
+      const priceDifference = getPlayerPrice(b) - getPlayerPrice(a);
+      return priceDifference || a.name.localeCompare(b.name);
+    });
+  nationalHierarchyCache.set(cacheKey, positionPeers);
+  const rank = positionPeers.findIndex((peer) => getPlayerId(peer) === getPlayerId(player)) + 1;
+
+  return {
+    rank: rank || positionPeers.length + 1,
+    total: positionPeers.length,
+    starterSlots
+  };
+}
+
+function numberOrNull(value) {
+  return value === null || value === undefined || value === "" ? null : Number(value);
+}
+
+// Project fantasy output from playing time, official scoring, form, team strength, and matchup.
+// These are model estimates rather than guaranteed FIFA Fantasy points.
+function getFantasyProjection(player, choices = getUserChoices()) {
+  const cacheKey = `${getPlayerId(player)}|${choices.teamStyle}|${choices.riskStyle}`;
+  if (fantasyProjectionCache.has(cacheKey)) return fantasyProjectionCache.get(cacheKey);
+  const playingTime = getPlayingTimeProjection(player);
+  const startProbability = getStartingProbability(player, playingTime);
+  const projectedMinutes = getProjectedMinutes(playingTime, startProbability);
+  const fixture = getNextFixtureContext(player);
+  const groupContext = getGroupStageProjectionContext(player);
+  const team = dataMaps.teamById?.get(player.team_id);
+  const position = getPlayerPosition(player);
+  const expectedGoalsFor = groupContext.expectedGoalsFor;
+  const expectedGoalsAgainst = groupContext.expectedGoalsAgainst;
+  const minutesShare = projectedMinutes / 90;
+  const quality = getPlayerAttackScore(player) / 100;
+  const defenseQuality = getPlayerDefenseScore(player) / 100;
+  const officialPriceQuality = getOfficialPriceQuality(player);
+  const historicalRates = getHistoricalPer90Rates(player);
+  const goalShare = { GK: 0.002, DEF: 0.045, MID: 0.14, FWD: 0.22 }[position] || 0.1;
+  const assistShare = { GK: 0.005, DEF: 0.07, MID: 0.18, FWD: 0.12 }[position] || 0.1;
+  const modelGoals = expectedGoalsFor * goalShare * (0.55 + quality * 0.45 + officialPriceQuality * 0.45) * minutesShare;
+  const modelAssists = expectedGoalsFor * assistShare * (0.6 + quality * 0.4 + officialPriceQuality * 0.4) * minutesShare;
+  const expectedGoals = blendProjection(modelGoals, historicalRates.goalsPer90 * minutesShare, historicalRates.hasMinutes);
+  const expectedAssists = blendProjection(modelAssists, historicalRates.assistsPer90 * minutesShare, historicalRates.hasMinutes);
+  const cleanSheetProbability = Math.exp(-expectedGoalsAgainst) * Math.min(1, projectedMinutes / 60);
+  const appearancePoints = startProbability * (projectedMinutes >= 60 ? 2 : 1)
+    + (1 - startProbability) * Math.min(0.65, projectedMinutes / 45);
+  const goalPoints = { GK: 9, DEF: 7, MID: 6, FWD: 5 }[position] || 5;
+  const cleanSheetPoints = { GK: 5, DEF: 5, MID: 1, FWD: 0 }[position] || 0;
+  const cardCost = historicalRates.cardsPer90 * minutesShare;
+  const teamStrengthMultiplier = getTeamStrengthMultiplier(team);
+  const styleMultiplier = getProjectionStyleMultiplier(position, choices);
+  const availabilityMultiplier = player.selectable_status === "playing" ? 1 : 0.1;
+  const riskMultiplier = Math.max(0.78, 1 - getPlayerRiskScore(player) / 500);
+  const projectedPoints = Math.max(0, (
+    appearancePoints
+    + expectedGoals * goalPoints
+    + expectedAssists * 3
+    + cleanSheetProbability * cleanSheetPoints * (0.75 + defenseQuality * 0.25)
+    - cardCost
+  ) * teamStrengthMultiplier * styleMultiplier * availabilityMultiplier * riskMultiplier);
+  const salary = getPlayerPrice(player);
+
+  const projection = {
+    projectedPoints: Number(projectedPoints.toFixed(2)),
+    salary,
+    valueScore: salary > 0 ? Number((projectedPoints / salary).toFixed(3)) : 0,
+    startProbability: Number(startProbability.toFixed(2)),
+    projectedMinutes: Math.round(projectedMinutes),
+    matchupDifficulty: fixture?.difficulty || "needs check",
+    groupStageDifficulty: groupContext.difficulty,
+    opponent: fixture?.opponent || "needs check",
+    expectedGoalsFor,
+    expectedGoalsAgainst,
+    cleanSheetProbability: Number(cleanSheetProbability.toFixed(2)),
+    riskMultiplier: Number(riskMultiplier.toFixed(2)),
+    lineupStatus: playingTime.status
+  };
+
+  fantasyProjectionCache.set(cacheKey, projection);
+  return projection;
+}
+
+function getGroupStageProjectionContext(player) {
+  const fixtures = getUpcomingFixtureDifficulty(player).slice(0, 3);
+  if (fixtures.length === 0) {
+    return { expectedGoalsFor: 1.35, expectedGoalsAgainst: 1.35, difficulty: "needs check" };
+  }
+
+  const expectedGoalsFor = fixtures.reduce((sum, row) => sum + Number(row.expected_goals_for || 1.35), 0) / fixtures.length;
+  const expectedGoalsAgainst = fixtures.reduce((sum, row) => sum + Number(row.expected_goals_against || 1.35), 0) / fixtures.length;
+  const averageDifficulty = fixtures.reduce((sum, row) => sum + getDifficultyValue(row.difficulty), 0) / fixtures.length;
+  const difficulty = averageDifficulty >= 7 ? "easy"
+    : averageDifficulty >= 3 ? "favorable"
+      : averageDifficulty >= -2 ? "medium"
+        : averageDifficulty >= -7 ? "difficult"
+          : "very difficult";
+
+  return { expectedGoalsFor, expectedGoalsAgainst, difficulty };
+}
+
+function getOfficialPriceQuality(player) {
+  const positionPriceRanges = {
+    GK: [3.5, 6.5],
+    DEF: [3.5, 7.5],
+    MID: [4, 11],
+    FWD: [4, 11]
+  };
+  const [minimum, maximum] = positionPriceRanges[getPlayerPosition(player)] || [3.5, 10];
+  return Math.max(0, Math.min(1, (getPlayerPrice(player) - minimum) / (maximum - minimum)));
+}
+
+function getStartingProbability(player, playingTime) {
+  const nationalRow = getNationalPerformance(player);
+  const starts = numberOrNull(nationalRow?.starts);
+  const appearances = numberOrNull(nationalRow?.appearances);
+
+  if (starts !== null && appearances > 0) {
+    return Math.max(0.05, Math.min(0.95, starts / appearances));
+  }
+  if (player.projected_lineup_status === "expected_starter") return 0.9;
+  if (player.projected_lineup_status === "bench_rotation") return 0.25;
+  if (player.projected_lineup_status === "unlikely_to_play") return 0.05;
+  if (playingTime.status === "Expected starter") return 0.82;
+  if (playingTime.status === "Bench / rotation option") return 0.4;
+  if (playingTime.status === "Unlikely to play") return 0.08;
+  const hierarchy = getNationalPositionHierarchy(player);
+  if (hierarchy.rank <= hierarchy.starterSlots) return 0.45;
+  if (hierarchy.rank === hierarchy.starterSlots + 1) return 0.28;
+  return 0.12;
+}
+
+function getProjectedMinutes(playingTime, startProbability) {
+  const ranges = {
+    "Expected starter": [60, 90],
+    "Bench / rotation option": [15, 55],
+    "Unlikely to play": [0, 20],
+    "Lineup uncertain": [10, 55]
+  };
+  const [minimum, maximum] = ranges[playingTime.status] || [10, 45];
+
+  return minimum + (maximum - minimum) * startProbability;
+}
+
+function getHistoricalPer90Rates(player) {
+  const rows = [getClubPerformance(player), getNationalPerformance(player)].filter(Boolean);
+  const minutes = rows.reduce((sum, row) => sum + Number(row.minutes || 0), 0);
+  const goals = rows.reduce((sum, row) => sum + Number(row.goals || 0), 0);
+  const assists = rows.reduce((sum, row) => sum + Number(row.assists || 0), 0);
+  const yellowCards = rows.reduce((sum, row) => sum + Number(row.yellow_cards || 0), 0);
+  const redCards = rows.reduce((sum, row) => sum + Number(row.red_cards || 0), 0);
+
+  return {
+    hasMinutes: minutes >= 180,
+    goalsPer90: minutes > 0 ? goals * 90 / minutes : 0,
+    assistsPer90: minutes > 0 ? assists * 90 / minutes : 0,
+    cardsPer90: minutes > 0 ? (yellowCards + redCards * 2) * 90 / minutes : 0
+  };
+}
+
+function blendProjection(modelValue, historicalValue, hasMinutes) {
+  return hasMinutes ? modelValue * 0.65 + historicalValue * 0.35 : modelValue;
+}
+
+function getTeamStrengthMultiplier(team) {
+  const ranking = Number(team?.fifa_ranking || 50);
+  return Math.max(0.72, Math.min(1.3, 1.32 - ranking * 0.016));
+}
+
+function getProjectionStyleMultiplier(position, choices) {
+  if (choices.teamStyle === "attacking" && ["MID", "FWD"].includes(position)) return 1.06;
+  if (choices.teamStyle === "defensive" && ["GK", "DEF"].includes(position)) return 1.06;
+  if (choices.teamStyle === "underdog") return 1;
+  if (choices.teamStyle === "chaos" && ["MID", "FWD"].includes(position)) return 1.03;
+  return 1;
 }
 
 // Apply the official position-specific point values to the historical stats we have.
@@ -1459,6 +1834,7 @@ function getModeWeights(choices) {
     expectedGoalsFor: 1,
     expectedGoalsAgainst: 1,
     price: 1,
+    playingTime: choices.riskStyle === "safe" ? 1.3 : 0.8,
     risk: choices.riskStyle === "safe" ? 1.4 : 0.75,
     dataQuality: choices.riskStyle === "safe" ? 1.4 : 0.8,
     underdog: 0,
@@ -1781,7 +2157,24 @@ function showSuggestions(players) {
     position: picksPositionFilter.value,
     maxPrice: picksMaxPriceFilter.value
   });
-  const playerPicks = pickBestPlayers(getOfficialPlayerPool(filteredPlayers), 15, choices);
+  const filtersAreActive = Boolean(
+    picksCountryFilter.value
+    || picksPositionFilter.value
+    || picksMaxPriceFilter.value
+  );
+  const playerPicks = filtersAreActive
+    ? getOfficialPlayerPool(filteredPlayers)
+      .slice()
+      .sort((a, b) => {
+        const aProjection = getFantasyProjection(a, choices);
+        const bProjection = getFantasyProjection(b, choices);
+        return bProjection.projectedPoints - aProjection.projectedPoints
+          || bProjection.valueScore - aProjection.valueScore;
+      })
+      .slice(0, 15)
+    : buildFantasySquad(players)
+      .slice()
+      .sort((a, b) => getFantasyProjection(b, choices).projectedPoints - getFantasyProjection(a, choices).projectedPoints);
 
   container.innerHTML = "";
 
@@ -1790,6 +2183,8 @@ function showSuggestions(players) {
     card.className = "advice-card";
     const recommendation = getRecommendationScore(player, choices);
     const parts = recommendation.parts;
+    const playingTime = getPlayingTimeProjection(player);
+    const projection = getFantasyProjection(player, choices);
 
     card.innerHTML = `
       <div class="advice-rank">#${index + 1}</div>
@@ -1798,9 +2193,14 @@ function showSuggestions(players) {
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation score:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
+        <p><strong>Projected fantasy points:</strong> ${projection.projectedPoints}</p>
+        <p><strong>Salary:</strong> ${projection.salary.toFixed(1)} ${getCurrencyLabel()}</p>
+        <p><strong>Value:</strong> ${projection.valueScore.toFixed(3)} points per salary unit</p>
+        <p><strong>Starting probability:</strong> ${Math.round(projection.startProbability * 100)}%</p>
+        <p><strong>Projected role:</strong> ${playingTime.status} | about ${projection.projectedMinutes} minutes</p>
+        <p><strong>Matchup:</strong> ${projection.opponent} | ${projection.matchupDifficulty}</p>
+        <p><strong>Group-stage schedule:</strong> ${projection.groupStageDifficulty}</p>
         <p><strong>Risk deduction:</strong> ${Math.round(parts.risk_penalty)} points</p>
-        <p>${getFixtureContextText(player)}</p>
         <p class="advice-reason">${choices.teamStyle === "underdog" ? getUnderdogReason(player) : getPlayerReason(player)}</p>
       </div>
     `;
@@ -1829,6 +2229,7 @@ function showCaptains(players) {
     card.className = "captain-card";
     const captainScoreValue = captainScoreOutOf100(player, choices);
     const recommendation = getRecommendationScore(player, choices);
+    const playingTime = getPlayingTimeProjection(player);
     const fixtureRows = getUpcomingFixtureDifficulty(player);
     const firstFixture = fixtureRows[0];
 
@@ -1844,6 +2245,7 @@ function showCaptains(players) {
         <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
         <p><strong>Recommendation:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
+        <p><strong>Projected role:</strong> ${playingTime.status} | ${playingTime.projectedMinutes} minutes</p>
         <p><strong>Next fixture:</strong> ${firstFixture ? `${firstFixture.difficulty}, xG ${firstFixture.expected_goals_for}` : "needs_check"}</p>
       </div>
       <p class="captain-reason">${getPlayerReason(player)}</p>
@@ -1892,6 +2294,9 @@ function showTeam(players) {
     <div>
       <strong>Max spend:</strong> ${budgetInfo.budget.toFixed(1)} ${getCurrencyLabel()}
     </div>
+    <div>
+      <strong>Total projected points:</strong> ${getSquadProjectedPoints(squad).toFixed(2)}
+    </div>
   `;
 
   budgetSummary.classList.toggle("warning", budgetInfo.isOverBudget);
@@ -1915,10 +2320,10 @@ function showTeam(players) {
   squad.forEach((player, index) => {
     const item = document.createElement("article");
     item.className = "squad-list-item";
-    const score = getPlayerRecommendationOutOf100(player);
+    const projection = getFantasyProjection(player);
     item.innerHTML = `
       <strong>#${index + 1} ${player.name}</strong>
-      <span>${player.country} | ${getPlayerPosition(player)} | ${getPlayerPrice(player)} | score ${score}</span>
+      <span>${player.country} | ${getPlayerPosition(player)} | ${projection.salary.toFixed(1)} | ${projection.projectedPoints} projected points | value ${projection.valueScore.toFixed(3)}</span>
     `;
     fullSquadList.appendChild(item);
   });
@@ -1927,6 +2332,7 @@ function showTeam(players) {
     const line = document.querySelector(`#${getLineId(getPlayerPosition(player))}`);
     const token = document.createElement("div");
     token.className = "player-token";
+    const projection = getFantasyProjection(player);
     const isCaptain = captainPick.captain && getPlayerId(player) === getPlayerId(captainPick.captain);
 
     token.innerHTML = `
@@ -1936,7 +2342,9 @@ function showTeam(players) {
       <div class="player-details">
         <p><strong>Country:</strong> ${player.country}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-        <p><strong>Recommendation:</strong> ${getPlayerRecommendationOutOf100(player)}/100</p>
+        <p><strong>Projected points:</strong> ${projection.projectedPoints}</p>
+        <p><strong>Start chance:</strong> ${Math.round(projection.startProbability * 100)}%</p>
+        <p><strong>Value:</strong> ${projection.valueScore.toFixed(3)}</p>
         <p><strong>Next:</strong> ${getFixtureContextText(player).replace("Next opponent: ", "")}</p>
         <p class="reason">${getPlayerReason(player)}</p>
       </div>
@@ -1954,6 +2362,7 @@ function showTeam(players) {
 function createSimplePlayerToken(player, number) {
   const token = document.createElement("div");
   token.className = "player-token";
+  const projection = getFantasyProjection(player);
 
   token.innerHTML = `
     <div class="shirt">${number}</div>
@@ -1962,7 +2371,9 @@ function createSimplePlayerToken(player, number) {
     <div class="player-details">
       <p><strong>Country:</strong> ${player.country}</p>
       <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
-      <p><strong>Recommendation:</strong> ${getPlayerRecommendationOutOf100(player)}/100</p>
+      <p><strong>Projected points:</strong> ${projection.projectedPoints}</p>
+      <p><strong>Start chance:</strong> ${Math.round(projection.startProbability * 100)}%</p>
+      <p><strong>Value:</strong> ${projection.valueScore.toFixed(3)}</p>
       <p><strong>Next:</strong> ${getFixtureContextText(player).replace("Next opponent: ", "")}</p>
     </div>
   `;
@@ -2097,12 +2508,16 @@ function showPlayerPool(players) {
     const card = document.createElement("button");
     card.className = "pool-card";
     card.type = "button";
+    const playingTime = getPlayingTimeProjection(player);
+    const projection = getFantasyProjection(player, getNeutralChoices());
 
     card.innerHTML = `
       <h3>${player.name}</h3>
       <p>${player.country} | ${getPlayerPosition(player)}</p>
-      <p>Official price: ${getPlayerPrice(player)} | Score: ${getPlayerRecommendationOutOf100(player, getNeutralChoices())}/100</p>
-      <p>${getFixtureContextText(player)}</p>
+      <p>Projected points: ${projection.projectedPoints} | Salary: ${projection.salary.toFixed(1)}</p>
+      <p>Value: ${projection.valueScore.toFixed(3)} | Start chance: ${Math.round(projection.startProbability * 100)}%</p>
+      <p>Projected role: ${playingTime.status}</p>
+      <p>Matchup: ${projection.opponent} | ${projection.matchupDifficulty}</p>
       <p class="pool-action">View full player details</p>
     `;
 
@@ -2116,6 +2531,8 @@ function showPlayerDetails(player) {
   const parts = recommendation.parts;
   const pickReasons = getPlayerPickReasons(player);
   const cautionReasons = getPlayerCautionReasons(player);
+  const playingTime = getPlayingTimeProjection(player);
+  const projection = getFantasyProjection(player, getNeutralChoices());
 
   playerDetailTitle.textContent = player.name;
   playerDetailContent.innerHTML = `
@@ -2126,11 +2543,17 @@ function showPlayerDetails(player) {
         <p><strong>Position:</strong> ${getPlayerPosition(player)}</p>
         <p><strong>Official price:</strong> ${getPlayerPrice(player)}</p>
         <p><strong>Roster status:</strong> ${player.roster_status}</p>
+        <p><strong>Projected role:</strong> ${playingTime.status}</p>
+        <p><strong>Projected minutes:</strong> ${projection.projectedMinutes}</p>
+        <p><strong>Starting probability:</strong> ${Math.round(projection.startProbability * 100)}%</p>
       </article>
       <article class="detail-card">
-        <h4>Recommendation Score</h4>
-        <p><strong>Total:</strong> ${recommendationScoreOutOf100(recommendation.total)}/100</p>
-        <p><strong>Fixture boost:</strong> ${Math.round(parts.fixture_boost)}</p>
+        <h4>Fantasy Projection</h4>
+        <p><strong>Projected points:</strong> ${projection.projectedPoints}</p>
+        <p><strong>Salary:</strong> ${projection.salary.toFixed(1)} ${getCurrencyLabel()}</p>
+        <p><strong>Value:</strong> ${projection.valueScore.toFixed(3)} points per salary unit</p>
+        <p><strong>Matchup:</strong> ${projection.opponent} | ${projection.matchupDifficulty}</p>
+        <p><strong>Playing-time adjustment:</strong> ${parts.playing_time_score > 0 ? "+" : ""}${Math.round(parts.playing_time_score)}</p>
         <p><strong>Risk deduction:</strong> ${Math.round(parts.risk_penalty)} points</p>
       </article>
     </div>
@@ -2362,8 +2785,10 @@ function sortPlayers(a, b, sortBy) {
   if (sortBy === "attack") return getPlayerAttackScore(b) - getPlayerAttackScore(a);
   if (sortBy === "defense") return getPlayerDefenseScore(b) - getPlayerDefenseScore(a);
   if (sortBy === "risk") return getPlayerRiskScore(a) - getPlayerRiskScore(b);
+  if (sortBy === "value") return getFantasyProjection(b, getNeutralChoices()).valueScore - getFantasyProjection(a, getNeutralChoices()).valueScore;
+  if (sortBy === "startChance") return getFantasyProjection(b, getNeutralChoices()).startProbability - getFantasyProjection(a, getNeutralChoices()).startProbability;
 
-  return playerScore(b, getNeutralChoices()) - playerScore(a, getNeutralChoices());
+  return getFantasyProjection(b, getNeutralChoices()).projectedPoints - getFantasyProjection(a, getNeutralChoices()).projectedPoints;
 }
 
 // Create clickable player slots for the custom team builder
@@ -2580,6 +3005,10 @@ function renderPlayerSelection(players) {
     .filter((item) => item.id !== activeSlotId && item.playerId)
     .map((item) => item.playerId);
   const maxAffordable = getMaxAffordableForSlot(activeSlotId, players);
+  const selectedGoalkeeperCountries = customSlots
+    .filter((item) => item.id !== activeSlotId && item.position === "GK" && item.playerId)
+    .map((item) => players.find((player) => getPlayerId(player) === item.playerId)?.country)
+    .filter(Boolean);
   const currencyLabel = getCurrencyLabel();
 
   title.textContent = `Choose ${slot.label}`;
@@ -2595,6 +3024,7 @@ function renderPlayerSelection(players) {
     maxPrice: customMaxPriceFilter.value
   })
     .filter((player) => !selectedIds.includes(getPlayerId(player)))
+    .filter((player) => slot.position !== "GK" || !selectedGoalkeeperCountries.includes(player.country))
     .filter((player) => getPlayerPrice(player) <= maxAffordable)
     .filter((player) => {
       const text = `${player.name} ${player.country} ${getPlayerPosition(player)}`.toLowerCase();
@@ -2617,11 +3047,13 @@ function renderPlayerSelection(players) {
       const card = document.createElement("button");
       card.className = "pool-card selection-card";
       card.type = "button";
+      const projection = getFantasyProjection(player, getNeutralChoices());
 
       card.innerHTML = `
         <h3>${player.name}</h3>
         <p>${player.country} | ${getPlayerPosition(player)}</p>
-        <p>Official price: ${getPlayerPrice(player)} | Score: ${getPlayerRecommendationOutOf100(player, getNeutralChoices())}/100</p>
+        <p>Projected points: ${projection.projectedPoints} | Salary: ${projection.salary.toFixed(1)}</p>
+        <p>Value: ${projection.valueScore.toFixed(3)} | Start chance: ${Math.round(projection.startProbability * 100)}%</p>
       `;
 
       card.addEventListener("click", () => {

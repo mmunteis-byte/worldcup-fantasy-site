@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>World Cup Fantasy Team Helper</title>
-  <link rel="stylesheet" href="style.css?v=20260610g">
+  <link rel="stylesheet" href="style.css?v=20260610p">
 </head>
 <body>
   <!-- Simple app header -->
@@ -145,7 +145,7 @@
 
       <!-- Player picks tab -->
       <div id="suggestions" class="tab-panel active">
-        <p class="risk-model-note"><strong>Risk deduction:</strong> A model estimate based on official player availability and available starts, minutes, and card records. Missing records add uncertainty; this is not an official FIFA score.</p>
+        <p class="risk-model-note"><strong>Roster objective:</strong> Maximize projected fantasy points within the salary cap. Value means projected points per salary unit; cheap players are selected only when they improve the legal squad.</p>
         <button class="filter-toggle" data-filter-target="picksFilters">Filters</button>
         <div id="picksFilters" class="filter-tools hidden">
           <label>
@@ -234,7 +234,9 @@
           <div class="selection-tools">
             <input id="customPlayerSearch" type="search" placeholder="Search players for this slot">
             <select id="customPlayerSort">
-              <option value="points">Best overall</option>
+              <option value="points">Projected fantasy points</option>
+              <option value="value">Best value</option>
+              <option value="startChance">Starting probability</option>
               <option value="priceLow">Price: low to high</option>
               <option value="priceHigh">Price: high to low</option>
               <option value="attack">Attack score</option>
@@ -396,6 +398,6 @@
     </section>
   </main>
 
-  <script src="script.js?v=20260610g"></script>
+  <script src="script.js?v=20260610p"></script>
 </body>
 </html>

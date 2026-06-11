@@ -596,3 +596,27 @@ Current counts:
 Quality note:
 
 The official FIFA Fantasy data checked so far does not include a clear club field. Club and league should remain `null` until a credible 2025 or 2025-2026 source is matched.
+# World Cup Qualifying Player Data Audit - June 10, 2026
+
+The national-team performance file is not yet complete for every World Cup team.
+
+- World Cup teams checked: 48
+- Host teams with no 2026 qualifying campaign: Canada, Mexico, United States
+- Qualifying nations with at least one matched performance row: 9 of 45
+- Qualifying nations still needing matched player data: 36 of 45
+
+Current matched nations:
+
+- Argentina
+- Brazil
+- Colombia
+- Egypt
+- England
+- France
+- Norway
+- Portugal
+- Spain
+
+The website must not treat a player as an expected starter based only on club form, official Fantasy price, or alphabetical order. An expected-starter label now requires verified national-team starts or minutes, or a separately sourced lineup projection. Missing national-team evidence is labeled `Lineup uncertain`.
+
+To complete this dataset, match-by-match lineups and player appearances must be collected for UEFA, CONMEBOL, CAF, AFC, CONCACAF, and OFC qualifying, then matched to `players.json`. Fields that are not published by a source must remain `null`.
